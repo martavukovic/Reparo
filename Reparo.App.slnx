@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Reparo.Api/Reparo.Api.csproj" />
+  <Project Path="Reparo.App/Reparo.App.csproj" />
+  <Project Path="Reparo.Shared/Reparo.Shared.csproj" />
+</Solution>

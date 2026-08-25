@@ -1,0 +1,75 @@
+﻿@page "/interventions"
+@rendermode RenderMode.InteractiveServer
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+
+<PageTitle>Interventions - Reparo</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Interventions</MudText>
+
+@if (!CurrentUser.HasAnyRole("Admin", "Manager"))
+{
+    <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
+}
+else if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudTable Items="@interventions" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Assignment ID</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Started</MudTh>
+            <MudTh>Finished</MudTh>
+            <MudTh>Duration (min)</MudTh>
+            <MudTh>Note</MudTh>
+            <MudTh>Materials</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.WorkAssignmentId</MudTd>
+            <MudTd>
+                <MudChip T="string"
+                         Color="@GetStatusColor(context.InterventionStatusName)"
+                         Size="Size.Small">
+                    @context.InterventionStatusName
+                </MudChip>
+            </MudTd>
+            <MudTd>@(context.StartedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")</MudTd>
+            <MudTd>@(context.FinishedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")</MudTd>
+            <MudTd>@(context.DurationMinutes?.ToString() ?? "-")</MudTd>
+            <MudTd>@(context.Note ?? "-")</MudTd>
+            <MudTd>@context.Materials.Count</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<InterventionDto> interventions = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var assignments = await Http.GetFromJsonAsync<List<WorkAssignmentDto>>(
+                "api/workassignments") ?? new();
+
+            interventions = assignments
+                .SelectMany(a => a.Interventions)
+                .ToList();
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+
+    private Color GetStatusColor(string? status) => status switch
+    {
+        "Completed" => Color.Success,
+        "In Progress" => Color.Warning,
+        "Failed" => Color.Error,
+        _ => Color.Default
+    };
+}

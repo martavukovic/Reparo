@@ -1,7 +1,118 @@
 ﻿@page "/"
+@rendermode RenderMode.InteractiveServer
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Dashboard - Reparo</PageTitle>
 
-<h1>Hello, world!</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
 
-Welcome to your new app.
+@if (!CurrentUser.IsLoggedIn)
+{
+    <MudAlert Severity="Severity.Info">
+        Please <MudLink Href="/login">sign in</MudLink> to view the dashboard.
+    </MudAlert>
+}
+else if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else if (dashboard is not null)
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.subtitle2">Open Reports</MudText>
+                <MudText Typo="Typo.h4">@dashboard.TotalOpen</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.subtitle2">Critical</MudText>
+                <MudText Typo="Typo.h4" Style="color: red">@dashboard.TotalCritical</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.subtitle2">Overdue</MudText>
+                <MudText Typo="Typo.h4" Style="color: orange">@dashboard.TotalOverdue</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.subtitle2">Unassigned</MudText>
+                <MudText Typo="Typo.h4">@dashboard.TotalUnassigned</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.subtitle2">Active Interventions</MudText>
+                <MudText Typo="Typo.h4">@dashboard.TotalActiveInterventions</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.subtitle2">Avg. Resolution (days)</MudText>
+                <MudText Typo="Typo.h4">@dashboard.AverageResolutionDays</MudText>
+            </MudPaper>
+        </MudItem>
+        @if (CurrentUser.HasAnyRole("Reporter", "Technician"))
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.subtitle2">My Reports</MudText>
+                    <MudText Typo="Typo.h4">@dashboard.MyReportsCount</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.subtitle2">My Assignments</MudText>
+                    <MudText Typo="Typo.h4">@dashboard.MyAssignmentsCount</MudText>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudText Typo="Typo.h6" Class="mb-2">Last 5 Reports</MudText>
+    <MudTable Items="@dashboard.LastFiveReports" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Title</MudTh>
+            <MudTh>Location</MudTh>
+            <MudTh>Priority</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Created</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Title</MudTd>
+            <MudTd>@context.LocationName</MudTd>
+            <MudTd>@(context.FaultPriorityName ?? "-")</MudTd>
+            <MudTd>@context.FaultStatusName</MudTd>
+            <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy")</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private DashboardDto? dashboard;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!CurrentUser.IsLoggedIn)
+        {
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            dashboard = await Http.GetFromJsonAsync<DashboardDto>("api/dashboard");
+        }
+        catch { }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

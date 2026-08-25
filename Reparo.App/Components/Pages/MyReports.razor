@@ -1,0 +1,155 @@
+﻿@page "/my-reports"
+@rendermode RenderMode.InteractiveServer
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>My Reports - Reparo</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">My Reports</MudText>
+
+@if (!CurrentUser.HasAnyRole("Reporter", "Admin"))
+{
+    <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
+}
+else
+{
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               Class="mb-4"
+               OnClick="OpenCreateDialog">
+        New Report
+    </MudButton>
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (reports.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No reports found.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@reports" Hover="true" Striped="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Title</MudTh>
+                <MudTh>Location</MudTh>
+                <MudTh>Priority</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Assigned To</MudTh>
+                <MudTh>Created</MudTh>
+                <MudTh>Deadline</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Title</MudTd>
+                <MudTd>@context.LocationName</MudTd>
+                <MudTd>@(context.FaultPriorityName ?? "-")</MudTd>
+                <MudTd>
+                    <MudChip T="string"
+                             Color="@GetStatusColor(context.FaultStatusName)"
+                             Size="Size.Small">
+                        @context.FaultStatusName
+                    </MudChip>
+                </MudTd>
+                <MudTd>@(context.ActiveTechnicianName ?? "Unassigned")</MudTd>
+                <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy")</MudTd>
+                <MudTd>@(context.Deadline?.ToString("dd.MM.yyyy") ?? "-")</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+}
+
+@if (showDialog)
+{
+    <MudDialog @bind-IsVisible="showDialog">
+        <TitleContent>
+            <MudText Typo="Typo.h6">New Fault Report</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudTextField @bind-Value="form.Title"
+                          Label="Title"
+                          Variant="Variant.Outlined"
+                          Class="mb-3" />
+            <MudTextField @bind-Value="form.Description"
+                          Label="Description"
+                          Variant="Variant.Outlined"
+                          Lines="3"
+                          Class="mb-3" />
+            <MudSelect @bind-Value="form.LocationId"
+                       Label="Location"
+                       Variant="Variant.Outlined"
+                       Class="mb-3">
+                @foreach (var l in locations)
+                {
+                    <MudSelectItem Value="@l.Id">@l.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => showDialog = false)">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="SaveReport">
+                Submit
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+}
+
+@code {
+    private List<FaultReportDto> reports = new();
+    private List<LookupDto> locations = new();
+    private FaultReportCreateDto form = new();
+    private bool isLoading = true;
+    private bool showDialog = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            reports = await Http.GetFromJsonAsync<List<FaultReportDto>>(
+                "api/faultreports/mine") ?? new();
+            locations = await Http.GetFromJsonAsync<List<LookupDto>>(
+                "api/locations/lookup") ?? new();
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+
+    private void OpenCreateDialog()
+    {
+        form = new FaultReportCreateDto();
+        if (CurrentUser.User?.EmployeeId is not null)
+            form.ReportedByEmployeeId = CurrentUser.User.EmployeeId.Value;
+        showDialog = true;
+    }
+
+    private async Task SaveReport()
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/faultreports", form);
+            if (response.IsSuccessStatusCode)
+            {
+                showDialog = false;
+                await LoadData();
+            }
+        }
+        catch { }
+    }
+
+    private Color GetStatusColor(string? status) => status switch
+    {
+        "Closed" => Color.Success,
+        "Resolved" => Color.Info,
+        "In Progress" => Color.Warning,
+        _ => Color.Default
+    };
+}

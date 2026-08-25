@@ -1,0 +1,76 @@
+﻿@page "/login"
+@rendermode RenderMode.InteractiveServer
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject CurrentUserService CurrentUser
+
+<PageTitle>Login - Reparo</PageTitle>
+
+<MudGrid Justify="Justify.Center" Class="mt-8">
+    <MudItem xs="12" sm="6" md="4">
+        <MudPaper Class="pa-6">
+            <MudText Typo="Typo.h5" Class="mb-4">Sign In</MudText>
+
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            <MudTextField @bind-Value="model.Email"
+                          Label="Email"
+                          Variant="Variant.Outlined"
+                          Class="mb-3" />
+
+            <MudTextField @bind-Value="model.Password"
+                          Label="Password"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined"
+                          Class="mb-4" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Disabled="isLoading"
+                       OnClick="HandleLogin">
+                @(isLoading ? "Signing in..." : "Sign In")
+            </MudButton>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mt-4">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Demo accounts:</MudText>
+            <MudText Typo="Typo.body2">admin@reparo.local / Admin123!</MudText>
+            <MudText Typo="Typo.body2">manager@reparo.local / Manager123!</MudText>
+            <MudText Typo="Typo.body2">tech@reparo.local / Tech123!</MudText>
+            <MudText Typo="Typo.body2">reporter@reparo.local / Reporter123!</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private LoginRequestDto model = new();
+    private string? errorMessage;
+    private bool isLoading;
+
+    protected override void OnInitialized()
+    {
+        if (CurrentUser.IsLoggedIn)
+            Navigation.NavigateTo("/");
+    }
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null;
+        isLoading = true;
+
+        var success = await AuthService.LoginAsync(model);
+
+        if (success)
+            Navigation.NavigateTo("/");
+        else
+            errorMessage = "Invalid email or password.";
+
+        isLoading = false;
+    }
+}

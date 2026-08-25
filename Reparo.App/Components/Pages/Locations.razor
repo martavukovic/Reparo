@@ -1,0 +1,308 @@
+﻿@page "/locations"
+@inject IDialogService DialogService
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+
+<PageTitle>Locations - Reparo</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Locations</MudText>
+
+@if (!CurrentUser.HasAnyRole("Admin", "Manager"))
+{
+    <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
+}
+else
+{
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               Class="mb-4"
+               OnClick="OpenCreateForm">
+        Add Location
+    </MudButton>
+
+    @if (showForm)
+    {
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">
+                @(editingId == 0 ? "Add Location" : "Edit Location")
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.Name"
+                                  Label="Name"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.Address"
+                                  Label="Address"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int"
+                               @bind-Value="form.LocationTypeId"
+                               Label="Location Type"
+                               Variant="Variant.Outlined">
+                        @foreach (var lt in locationTypes)
+                        {
+                            <MudSelectItem T="int" Value="@lt.Id">
+                                @lt.Name
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" Class="d-flex align-center">
+                    <MudCheckBox @bind-Value="form.IsActive" Label="Active" />
+                </MudItem>
+            </MudGrid>
+
+            <MudStack Row="true" Class="mt-3">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="SaveLocation"
+                           Disabled="@(form.LocationTypeId == 0)">
+                    Save
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="CloseForm">
+                    Cancel
+                </MudButton>
+            </MudStack>
+
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <MudAlert Severity="@messageSeverity" Class="mt-3">
+                    @message
+                </MudAlert>
+            }
+        </MudPaper>
+    }
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudTable Items="@locations" Hover="true" Striped="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Address</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Name</MudTd>
+                <MudTd>@context.Address</MudTd>
+                <MudTd>@context.LocationTypeName</MudTd>
+                <MudTd>
+                    <MudChip T="string"
+                             Color="@(context.IsActive ? Color.Success : Color.Default)"
+                             Size="Size.Small">
+                        @(context.IsActive ? "Active" : "Inactive")
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@(() => OpenEditForm(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => ConfirmDelete(context))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(message) && !showForm)
+    {
+        <MudAlert Severity="@messageSeverity" Class="mt-3"
+                  ShowCloseIcon="true"
+                  CloseIconClicked="@(() => message = null)">
+            @message
+        </MudAlert>
+    }
+}
+
+@code {
+    private List<LocationDto> locations = new();
+    private List<LookupDto> locationTypes = new();
+    private LocationCreateDto form = new();
+    private bool isLoading = true;
+    private bool showForm = false;
+    private int editingId = 0;
+    private LocationDto? deletingLocation;
+    private string? message;
+    private Severity messageSeverity = Severity.Success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            var locTask = Http.GetFromJsonAsync<List<LocationDto>>("api/locations");
+            var ltTask = Http.GetFromJsonAsync<List<LookupDto>>(
+                "api/lookups/location-types");
+
+            await Task.WhenAll(locTask, ltTask);
+
+            locations = locTask.Result ?? new();
+            locationTypes = ltTask.Result ?? new();
+        }
+        catch (Exception ex)
+        {
+            message = $"Error loading data: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OpenCreateForm()
+    {
+        form = new LocationCreateDto { IsActive = true };
+        editingId = 0;
+        message = null;
+        showForm = true;
+    }
+
+    private void OpenEditForm(LocationDto location)
+    {
+        form = new LocationCreateDto
+        {
+            Name = location.Name,
+            Address = location.Address,
+            LocationTypeId = location.LocationTypeId,
+            IsActive = location.IsActive
+        };
+        editingId = location.Id;
+        message = null;
+        showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        showForm = false;
+        message = null;
+    }
+
+    private async Task ConfirmDelete(LocationDto location)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Message"] = $"Are you sure you want to deactivate {location.Name}? This will mark the location as inactive.",
+            ["ConfirmText"] = "Deactivate",
+            ["ConfirmColor"] = Color.Error
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(
+            "Deactivate Location", parameters, options);
+
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await DeactivateLocation(location);
+        }
+    }
+
+    private async Task DeactivateLocation(LocationDto location)
+    {
+        try
+        {
+            var dto = new LocationCreateDto
+            {
+                Name = location.Name,
+                Address = location.Address,
+                LocationTypeId = location.LocationTypeId,
+                IsActive = false
+            };
+
+            var response = await Http.PutAsJsonAsync(
+                $"api/locations/{location.Id}", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = $"{location.Name} has been deactivated.";
+                messageSeverity = Severity.Success;
+                await LoadData();
+            }
+            else
+            {
+                message = "Error deactivating location.";
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+    }
+
+
+
+    private async Task SaveLocation()
+    {
+        if (string.IsNullOrWhiteSpace(form.Name))
+        {
+            message = "Name is required.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (form.LocationTypeId == 0)
+        {
+            message = "Please select a location type.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            HttpResponseMessage response;
+
+            if (editingId == 0)
+                response = await Http.PostAsJsonAsync("api/locations", form);
+            else
+                response = await Http.PutAsJsonAsync(
+                    $"api/locations/{editingId}", form);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "Location saved successfully.";
+                messageSeverity = Severity.Success;
+                showForm = false;
+                await LoadData();
+            }
+            else
+            {
+                message = $"Error: {await response.Content.ReadAsStringAsync()}";
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+    }
+}

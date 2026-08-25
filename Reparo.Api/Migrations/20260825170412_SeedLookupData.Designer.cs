@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Reparo.Api.Data;
 
@@ -10,9 +11,11 @@ using Reparo.Api.Data;
 namespace Reparo.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260825170412_SeedLookupData")]
+    partial class SeedLookupData
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
@@ -306,22 +309,22 @@ namespace Reparo.Api.Migrations
                         new
                         {
                             Id = 1,
-                            Name = "Low"
+                            Name = "Nizak"
                         },
                         new
                         {
                             Id = 2,
-                            Name = "Medium"
+                            Name = "Srednji"
                         },
                         new
                         {
                             Id = 3,
-                            Name = "High"
+                            Name = "Visok"
                         },
                         new
                         {
                             Id = 4,
-                            Name = "Critical"
+                            Name = "Kritičan"
                         });
                 });
 
@@ -396,32 +399,32 @@ namespace Reparo.Api.Migrations
                         new
                         {
                             Id = 1,
-                            Name = "Submitted"
+                            Name = "Zaprimljeno"
                         },
                         new
                         {
                             Id = 2,
-                            Name = "Reviewed"
+                            Name = "Pregledano"
                         },
                         new
                         {
                             Id = 3,
-                            Name = "Assigned"
+                            Name = "Dodijeljeno"
                         },
                         new
                         {
                             Id = 4,
-                            Name = "In Progress"
+                            Name = "U radu"
                         },
                         new
                         {
                             Id = 5,
-                            Name = "Resolved"
+                            Name = "Riješeno"
                         },
                         new
                         {
                             Id = 6,
-                            Name = "Closed"
+                            Name = "Zatvoreno"
                         });
                 });
 
@@ -443,32 +446,32 @@ namespace Reparo.Api.Migrations
                         new
                         {
                             Id = 1,
-                            Name = "Electrical"
+                            Name = "Elektrika"
                         },
                         new
                         {
                             Id = 2,
-                            Name = "Plumbing"
+                            Name = "Voda"
                         },
                         new
                         {
                             Id = 3,
-                            Name = "Heating"
+                            Name = "Grijanje"
                         },
                         new
                         {
                             Id = 4,
-                            Name = "Network"
+                            Name = "Mreža"
                         },
                         new
                         {
                             Id = 5,
-                            Name = "Construction"
+                            Name = "Građevinski radovi"
                         },
                         new
                         {
                             Id = 6,
-                            Name = "Other"
+                            Name = "Ostalo"
                         });
                 });
 
@@ -524,7 +527,7 @@ namespace Reparo.Api.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Quantity")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("decimal(10,2)");
 
                     b.HasKey("Id");
 
@@ -555,22 +558,22 @@ namespace Reparo.Api.Migrations
                         new
                         {
                             Id = 1,
-                            Name = "Planned"
+                            Name = "Planirana"
                         },
                         new
                         {
                             Id = 2,
-                            Name = "In Progress"
+                            Name = "U tijeku"
                         },
                         new
                         {
                             Id = 3,
-                            Name = "Completed"
+                            Name = "Završena"
                         },
                         new
                         {
                             Id = 4,
-                            Name = "Failed"
+                            Name = "Neuspješna"
                         });
                 });
 
@@ -619,22 +622,22 @@ namespace Reparo.Api.Migrations
                         new
                         {
                             Id = 1,
-                            Name = "Administrative Building"
+                            Name = "Upravna zgrada"
                         },
                         new
                         {
                             Id = 2,
-                            Name = "School"
+                            Name = "Škola"
                         },
                         new
                         {
                             Id = 3,
-                            Name = "Healthcare Facility"
+                            Name = "Zdravstvena ustanova"
                         },
                         new
                         {
                             Id = 4,
-                            Name = "Warehouse"
+                            Name = "Skladište"
                         });
                 });
 
@@ -674,17 +677,17 @@ namespace Reparo.Api.Migrations
                         new
                         {
                             Id = 1,
-                            Name = "Piece"
+                            Name = "Komad"
                         },
                         new
                         {
                             Id = 2,
-                            Name = "Meter"
+                            Name = "Metar"
                         },
                         new
                         {
                             Id = 3,
-                            Name = "Liter"
+                            Name = "Litra"
                         },
                         new
                         {
@@ -694,7 +697,7 @@ namespace Reparo.Api.Migrations
                         new
                         {
                             Id = 5,
-                            Name = "Package"
+                            Name = "Paket"
                         });
                 });
 
@@ -839,13 +842,13 @@ namespace Reparo.Api.Migrations
                     b.HasOne("Reparo.Shared.Models.Location", "Location")
                         .WithMany("FaultReports")
                         .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Reparo.Shared.Models.Employee", "ReportedByEmployee")
                         .WithMany("ReportedFaults")
                         .HasForeignKey("ReportedByEmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("FaultPriority");
@@ -927,7 +930,7 @@ namespace Reparo.Api.Migrations
                     b.HasOne("Reparo.Shared.Models.Employee", "Technician")
                         .WithMany("Assignments")
                         .HasForeignKey("TechnicianId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("FaultReport");

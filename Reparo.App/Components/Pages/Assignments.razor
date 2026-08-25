@@ -1,0 +1,104 @@
+﻿@page "/assignments"
+@rendermode RenderMode.InteractiveServer
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>Assignments - Reparo</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Work Assignments</MudText>
+
+@if (!CurrentUser.HasAnyRole("Admin", "Manager"))
+{
+    <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
+}
+else if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudTable Items="@assignments" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Fault Report</MudTh>
+            <MudTh>Location</MudTh>
+            <MudTh>Technician</MudTh>
+            <MudTh>Priority</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Assigned</MudTh>
+            <MudTh>Active</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.FaultReportTitle</MudTd>
+            <MudTd>@context.LocationName</MudTd>
+            <MudTd>@context.TechnicianName</MudTd>
+            <MudTd>
+                <MudChip T="string"
+                         Color="@GetPriorityColor(context.FaultPriorityName)"
+                         Size="Size.Small">
+                    @(context.FaultPriorityName == "" ? "-" : context.FaultPriorityName)
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string"
+                         Color="@GetStatusColor(context.FaultStatusName)"
+                         Size="Size.Small">
+                    @context.FaultStatusName
+                </MudChip>
+            </MudTd>
+            <MudTd>@context.AssignedAt.ToString("dd.MM.yyyy")</MudTd>
+            <MudTd>
+                <MudChip T="string"
+                         Color="@(context.IsActive ? Color.Success : Color.Default)"
+                         Size="Size.Small">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                               Size="Size.Small"
+                               OnClick="@(() => Navigation.NavigateTo(
+                                                                                  $"/fault-reports/{context.FaultReportId}"))" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<WorkAssignmentDto> assignments = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            assignments = await Http.GetFromJsonAsync<List<WorkAssignmentDto>>(
+                "api/workassignments") ?? new();
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+
+    private Color GetPriorityColor(string? priority) => priority switch
+    {
+        "Critical" => Color.Error,
+        "High" => Color.Warning,
+        "Medium" => Color.Info,
+        _ => Color.Default
+    };
+
+    private Color GetStatusColor(string? status) => status switch
+    {
+        "Closed" => Color.Success,
+        "Resolved" => Color.Info,
+        "In Progress" => Color.Warning,
+        _ => Color.Default
+    };
+}

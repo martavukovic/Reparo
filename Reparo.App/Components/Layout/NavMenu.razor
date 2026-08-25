@@ -1,30 +1,90 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Reparo.App</a>
-    </div>
-</div>
+﻿@using Reparo.App.Services
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+@implements IDisposable
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<MudNavMenu>
+    @if (!CurrentUser.IsLoggedIn)
+    {
+        <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login">
+            Prijava
+        </MudNavLink>
+    }
+    else
+    {
+        <MudNavLink Href="/" Icon="@Icons.Material.Filled.Dashboard"
+                    Match="NavLinkMatch.All">
+            Dashboard
+        </MudNavLink>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
+        @if (CurrentUser.HasAnyRole("Admin", "Manager"))
+        {
+            <MudNavLink Href="/locations" Icon="@Icons.Material.Filled.LocationOn">
+                Lokacije
+            </MudNavLink>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
+            <MudNavLink Href="/fault-reports" Icon="@Icons.Material.Filled.BugReport">
+                Prijave kvarova
+            </MudNavLink>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
-</div>
+            <MudNavLink Href="/assignments" Icon="@Icons.Material.Filled.Assignment">
+                Dodjele
+            </MudNavLink>
 
+            <MudNavLink Href="/interventions" Icon="@Icons.Material.Filled.Build">
+                Intervencije
+            </MudNavLink>
+        }
+
+        @if (CurrentUser.HasRole("Admin"))
+        {
+            <MudNavLink Href="/users" Icon="@Icons.Material.Filled.People">
+                Korisnici
+            </MudNavLink>
+        }
+
+        @if (CurrentUser.HasRole("Reporter"))
+        {
+            <MudNavLink Href="/my-reports" Icon="@Icons.Material.Filled.ListAlt">
+                Moje prijave
+            </MudNavLink>
+        }
+
+        @if (CurrentUser.HasRole("Technician"))
+        {
+            <MudNavLink Href="/my-assignments" Icon="@Icons.Material.Filled.Engineering">
+                Moji nalozi
+            </MudNavLink>
+        }
+
+        <MudDivider Class="my-2" />
+
+        <MudNavLink Icon="@Icons.Material.Filled.Logout"
+                    OnClick="HandleLogout">
+            Odjava
+        </MudNavLink>
+    }
+</MudNavMenu>
+
+@code {
+    protected override void OnInitialized()
+    {
+        CurrentUser.UserChanged += HandleUserChanged;
+    }
+
+    private void HandleUserChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLogout()
+    {
+        CurrentUser.Logout();
+        Navigation.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        CurrentUser.UserChanged -= HandleUserChanged;
+    }
+}

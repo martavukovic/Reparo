@@ -1,0 +1,48 @@
+﻿@page "/users"
+@rendermode RenderMode.InteractiveServer
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+
+<PageTitle>Users - Reparo</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">User Management</MudText>
+
+@if (!CurrentUser.HasRole("Admin"))
+{
+    <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
+}
+else
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        User management is handled through the API seeder.
+        Demo accounts are available for all roles.
+    </MudAlert>
+
+    <MudPaper Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Demo Accounts</MudText>
+        <MudTable Items="@demoUsers" Hover="true" Striped="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Email</MudTh>
+                <MudTh>Password</MudTh>
+                <MudTh>Roles</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Email</MudTd>
+                <MudTd>@context.Password</MudTd>
+                <MudTd>@context.Roles</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+}
+
+@code {
+    private List<DemoUser> demoUsers = new()
+    {
+        new DemoUser("admin@reparo.local", "Admin123!", "Admin, Manager"),
+        new DemoUser("manager@reparo.local", "Manager123!", "Manager"),
+        new DemoUser("tech@reparo.local", "Tech123!", "Technician"),
+        new DemoUser("reporter@reparo.local", "Reporter123!", "Reporter")
+    };
+
+    private record DemoUser(string Email, string Password, string Roles);
+}

@@ -52,10 +52,21 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Servisi
 builder.Services.AddScoped<JwtService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBlazor", policy =>
+    {
+        policy.WithOrigins("https://localhost:7192")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
+
+app.UseCors("AllowBlazor");
 
 if (app.Environment.IsDevelopment())
 {
@@ -68,7 +79,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Seed korisnika
 using (var scope = app.Services.CreateScope())
 {
     var userManager = scope.ServiceProvider

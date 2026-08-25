@@ -1,0 +1,286 @@
+﻿@page "/fault-reports/{Id:int}"
+@rendermode RenderMode.InteractiveServer
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>Fault Report - Reparo</PageTitle>
+
+@if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else if (report is null)
+{
+    <MudAlert Severity="Severity.Error">Report not found.</MudAlert>
+}
+else
+{
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               OnClick="@(() => Navigation.NavigateTo("/fault-reports"))"
+               Class="mb-4">
+        Back
+    </MudButton>
+
+    <MudGrid>
+        <MudItem xs="12" md="8">
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h5" Class="mb-2">@report.Title</MudText>
+                <MudText Typo="Typo.body1" Class="mb-4">@report.Description</MudText>
+
+                <MudDivider Class="mb-3" />
+
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption">Location</MudText>
+                        <MudText Typo="Typo.body2">@report.LocationName</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption">Reported By</MudText>
+                        <MudText Typo="Typo.body2">@report.ReportedByEmployeeName</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption">Fault Type</MudText>
+                        <MudText Typo="Typo.body2">@(report.FaultTypeName ?? "-")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption">Priority</MudText>
+                        <MudText Typo="Typo.body2">@(report.FaultPriorityName ?? "-")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption">Status</MudText>
+                        <MudText Typo="Typo.body2">@report.FaultStatusName</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption">Deadline</MudText>
+                        <MudText Typo="Typo.body2">
+                            @(report.Deadline?.ToString("dd.MM.yyyy") ?? "-")
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption">Assigned To</MudText>
+                        <MudText Typo="Typo.body2">
+                            @(report.ActiveTechnicianName ?? "Unassigned")
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption">Created</MudText>
+                        <MudText Typo="Typo.body2">
+                            @report.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        @if (CurrentUser.HasAnyRole("Admin", "Manager"))
+        {
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Review Report</MudText>
+
+                    <MudSelect @bind-Value="reviewForm.FaultTypeId"
+                               Label="Fault Type"
+                               Variant="Variant.Outlined"
+                               Class="mb-3"
+                               Clearable="true">
+                        @foreach (var t in faultTypes)
+                        {
+                            <MudSelectItem Value="@((int?)t.Id)">@t.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect @bind-Value="reviewForm.FaultPriorityId"
+                               Label="Priority"
+                               Variant="Variant.Outlined"
+                               Class="mb-3"
+                               Clearable="true">
+                        @foreach (var p in priorities)
+                        {
+                            <MudSelectItem Value="@((int?)p.Id)">@p.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudDatePicker @bind-Date="deadline"
+                                   Label="Deadline"
+                                   Variant="Variant.Outlined"
+                                   Class="mb-3" />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               OnClick="SaveReview"
+                               Class="mb-3">
+                        Save Review
+                    </MudButton>
+                </MudPaper>
+
+                <MudPaper Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Assign Technician</MudText>
+
+                    <MudSelect @bind-Value="assignTechnicianId"
+                               Label="Technician"
+                               Variant="Variant.Outlined"
+                               Class="mb-3">
+                        @foreach (var t in technicians)
+                        {
+                            <MudSelectItem Value="@t.Id">@t.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="assignNote"
+                                  Label="Note"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3" />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               FullWidth="true"
+                               OnClick="AssignTechnician">
+                        Assign
+                    </MudButton>
+                </MudPaper>
+
+                @if (report.FaultStatusName == "Resolved")
+                {
+                    <MudPaper Class="pa-4">
+                        <MudText Typo="Typo.h6" Class="mb-3">Close Report</MudText>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   FullWidth="true"
+                                   OnClick="CloseReport">
+                            Close Report
+                        </MudButton>
+                    </MudPaper>
+                }
+            </MudItem>
+        }
+    </MudGrid>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <MudAlert Severity="@messageSeverity" Class="mt-4">@message</MudAlert>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private FaultReportDto? report;
+    private List<LookupDto> faultTypes = new();
+    private List<LookupDto> priorities = new();
+    private List<LookupDto> technicians = new();
+    private FaultReportUpdateDto reviewForm = new();
+    private DateTime? deadline;
+    private int assignTechnicianId;
+    private string assignNote = "";
+    private bool isLoading = true;
+    private string? message;
+    private Severity messageSeverity = Severity.Success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            report = await Http.GetFromJsonAsync<FaultReportDto>(
+                $"api/faultreports/{Id}");
+
+            faultTypes = await Http.GetFromJsonAsync<List<LookupDto>>(
+                "api/lookups/fault-types") ?? new();
+            priorities = await Http.GetFromJsonAsync<List<LookupDto>>(
+                "api/lookups/fault-priorities") ?? new();
+            technicians = await Http.GetFromJsonAsync<List<LookupDto>>(
+                "api/lookups/technicians") ?? new();
+
+            if (report is not null)
+            {
+                reviewForm.FaultTypeId = report.FaultTypeId;
+                reviewForm.FaultPriorityId = report.FaultPriorityId;
+                deadline = report.Deadline;
+            }
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+
+    private async Task SaveReview()
+    {
+        try
+        {
+            reviewForm.Deadline = deadline;
+            var response = await Http.PutAsJsonAsync(
+                $"api/faultreports/{Id}/review", reviewForm);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "Report reviewed successfully.";
+                messageSeverity = Severity.Success;
+                await LoadData();
+            }
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch { }
+    }
+
+    private async Task AssignTechnician()
+    {
+        try
+        {
+            var dto = new WorkAssignmentCreateDto
+            {
+                FaultReportId = Id,
+                TechnicianId = assignTechnicianId,
+                Note = assignNote
+            };
+
+            var response = await Http.PostAsJsonAsync(
+                "api/workassignments", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "Technician assigned successfully.";
+                messageSeverity = Severity.Success;
+                await LoadData();
+            }
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch { }
+    }
+
+    private async Task CloseReport()
+    {
+        try
+        {
+            var response = await Http.PutAsJsonAsync(
+                $"api/faultreports/{Id}/close", new { });
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "Report closed successfully.";
+                messageSeverity = Severity.Success;
+                await LoadData();
+            }
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch { }
+    }
+}

@@ -39,6 +39,17 @@ public class InterventionsController : ControllerBase
             !User.IsInRole("Admin"))
             return Forbid();
 
+        // Provjera mora biti OVDJE - prije kreiranja
+        var existingActive = await _context.Interventions
+            .Include(i => i.InterventionStatus)
+            .Where(i => i.WorkAssignmentId == dto.WorkAssignmentId &&
+                (i.InterventionStatus.Name == "Planned" ||
+                 i.InterventionStatus.Name == "In Progress"))
+            .FirstOrDefaultAsync();
+
+        if (existingActive is not null)
+            return BadRequest("An active intervention already exists for this assignment.");
+
         var statusPlanned = await _context.InterventionStatuses
             .FirstOrDefaultAsync(s => s.Name == "Planned");
 
@@ -51,7 +62,6 @@ public class InterventionsController : ControllerBase
 
         _context.Interventions.Add(intervention);
 
-        // Set fault report status to In Progress
         var statusInProgress = await _context.FaultStatuses
             .FirstOrDefaultAsync(s => s.Name == "In Progress");
 

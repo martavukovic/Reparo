@@ -1,5 +1,4 @@
 ﻿@page "/my-assignments"
-@rendermode RenderMode.InteractiveServer
 @inject HttpClient Http
 @inject CurrentUserService CurrentUser
 
@@ -15,181 +14,338 @@ else if (isLoading)
 {
     <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
 }
-else if (assignments.Count == 0)
-{
-    <MudAlert Severity="Severity.Info">No assignments found.</MudAlert>
-}
 else
 {
-    @foreach (var assignment in assignments)
+    @if (activeAssignments.Any())
     {
-        <MudPaper Class="pa-4 mb-4">
-            <MudText Typo="Typo.h6" Class="mb-1">@assignment.FaultReportTitle</MudText>
-            <MudText Typo="Typo.body2" Class="mb-1">
-                Location: @assignment.LocationName
-            </MudText>
-            <MudText Typo="Typo.body2" Class="mb-1">
-                Priority: @(assignment.FaultPriorityName == "" ? "-" : assignment.FaultPriorityName)
-            </MudText>
-            <MudText Typo="Typo.body2" Class="mb-3">
-                Status: @assignment.FaultStatusName
-            </MudText>
+        <MudText Typo="Typo.h5" Class="mb-3">Active Assignments</MudText>
 
-            @if (assignment.IsActive)
-            {
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           Size="Size.Small"
-                           Class="mb-3"
-                           OnClick="@(() => StartIntervention(assignment.Id))">
-                    Start Intervention
-                </MudButton>
-            }
-
-            @if (assignment.Interventions.Count > 0)
-            {
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Interventions</MudText>
-                @foreach (var intervention in assignment.Interventions)
-                {
-                    <MudPaper Class="pa-3 mb-2" Outlined="true">
-                        <MudText Typo="Typo.body2">
-                            Status: @intervention.InterventionStatusName
+        @foreach (var assignment in activeAssignments)
+        {
+            <MudPaper Class="pa-4 mb-4" Style="border-left: 4px solid #7c4dff;">
+                <MudGrid>
+                    <MudItem xs="12" md="9">
+                        <MudText Typo="Typo.h6" Class="mb-2">
+                            @assignment.FaultReportTitle
                         </MudText>
-                        <MudText Typo="Typo.body2">
-                            Started: @(intervention.StartedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")
-                        </MudText>
-                        <MudText Typo="Typo.body2">
-                            Finished: @(intervention.FinishedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")
-                        </MudText>
-                        <MudText Typo="Typo.body2">
-                            Note: @(intervention.Note ?? "-")
-                        </MudText>
-
-                        @if (intervention.InterventionStatusName == "Planned" ||
-                             intervention.InterventionStatusName == "Planirana")
-                        {
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Success"
-                                       Size="Size.Small"
-                                       Class="mt-2 mr-2"
-                                       OnClick="@(() => OpenFinishDialog(
-                                           intervention, true))">
-                                Finish Successfully
-                            </MudButton>
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Error"
-                                       Size="Size.Small"
-                                       Class="mt-2"
-                                       OnClick="@(() => OpenFinishDialog(
-                                           intervention, false))">
-                                Mark as Failed
-                            </MudButton>
-
-                            <MudDivider Class="my-3" />
-                            <MudText Typo="Typo.subtitle2" Class="mb-2">
-                                Add Material
-                            </MudText>
-                            <MudGrid>
-                                <MudItem xs="12" sm="4">
-                                    <MudSelect @bind-Value="materialForm.MaterialId"
-                                               Label="Material"
-                                               Variant="Variant.Outlined">
-                                        @foreach (var m in materials)
-                                        {
-                                            <MudSelectItem Value="@m.Id">@m.Name</MudSelectItem>
-                                        }
-                                    </MudSelect>
+                        <MudGrid>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption">Location</MudText>
+                                <MudText Typo="Typo.body2">@assignment.LocationName</MudText>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption">Fault Type</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @(string.IsNullOrEmpty(assignment.FaultTypeName)
+                                        ? "-" : assignment.FaultTypeName)
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption">Priority</MudText>
+                                <MudChip T="string"
+                                         Color="@GetPriorityColor(assignment.FaultPriorityName)"
+                                         Size="Size.Small">
+                                    @(string.IsNullOrEmpty(assignment.FaultPriorityName)
+                                        ? "-" : assignment.FaultPriorityName)
+                                </MudChip>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption">Assigned</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @assignment.AssignedAt.ToString("dd.MM.yyyy")
+                                </MudText>
+                            </MudItem>
+                            @if (!string.IsNullOrWhiteSpace(assignment.Note))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption">Note</MudText>
+                                    <MudText Typo="Typo.body2">@assignment.Note</MudText>
                                 </MudItem>
-                                <MudItem xs="12" sm="3">
-                                    <MudNumericField @bind-Value="materialForm.Quantity"
+                            }
+                        </MudGrid>
+                    </MudItem>
+                    <MudItem xs="12" md="3" Class="d-flex align-center justify-end">
+                        @if (!assignment.Interventions.Any(i =>
+                            i.InterventionStatusName == "Planned"))
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => StartIntervention(assignment.Id))">
+                                Start Intervention
+                            </MudButton>
+                        }
+                    </MudItem>
+                </MudGrid>
+
+                @{
+                    var plannedIntervention = assignment.Interventions
+                        .FirstOrDefault(i => i.InterventionStatusName == "Planned");
+                }
+
+                @if (plannedIntervention is not null)
+                {
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">
+                        Active Intervention
+                    </MudText>
+
+                    <MudPaper Class="pa-3" Outlined="true">
+
+                        @if (plannedIntervention.Materials.Any())
+                        {
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">
+                                Materials Used
+                            </MudText>
+                            @foreach (var mat in plannedIntervention.Materials)
+                            {
+                                <MudText Typo="Typo.body2" Class="mb-1">
+                                    • @mat.MaterialName — @mat.Quantity @mat.MaterialUnitName
+                                </MudText>
+                            }
+                            <MudDivider Class="my-2" />
+                        }
+
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Add Material</MudText>
+
+                        @if (activeMaterialInterventionId == plannedIntervention.Id)
+                        {
+                            <MudGrid>
+                                <MudItem xs="12" sm="5">
+                                    <MudTextField @bind-Value="materialName"
+                                                  Label="Material Name"
+                                                  Variant="Variant.Outlined"
+                                                  Placeholder="e.g. Cable 2.5mm" />
+                                </MudItem>
+                                <MudItem xs="12" sm="2">
+                                    <MudNumericField @bind-Value="materialQuantity"
                                                      Label="Quantity"
                                                      Variant="Variant.Outlined"
                                                      Min="0.01m" />
                                 </MudItem>
                                 <MudItem xs="12" sm="3">
-                                    <MudSelect @bind-Value="materialForm.MaterialUnitId"
+                                    <MudSelect T="int"
+                                               @bind-Value="materialUnitId"
                                                Label="Unit"
                                                Variant="Variant.Outlined">
                                         @foreach (var u in materialUnits)
                                         {
-                                            <MudSelectItem Value="@u.Id">@u.Name</MudSelectItem>
+                                            <MudSelectItem T="int" Value="@u.Id">
+                                                @u.Name
+                                            </MudSelectItem>
                                         }
                                     </MudSelect>
                                 </MudItem>
-                                <MudItem xs="12" sm="2"
-                                         Class="d-flex align-center">
+                                <MudItem xs="12" sm="2" Class="d-flex align-center gap-2">
                                     <MudButton Variant="Variant.Filled"
                                                Color="Color.Primary"
                                                OnClick="@(() => AddMaterial(
-                                                   intervention.Id))">
+                                                   plannedIntervention.Id))">
                                         Add
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text"
+                                               OnClick="@(() =>
+                                                   activeMaterialInterventionId = 0)">
+                                        Cancel
                                     </MudButton>
                                 </MudItem>
                             </MudGrid>
                         }
+                        else
+                        {
+                            <MudButton Variant="Variant.Outlined"
+                                       Size="Size.Small"
+                                       Class="mb-3"
+                                       OnClick="@(() => {
+                                           activeMaterialInterventionId = plannedIntervention.Id;
+                                           materialName = string.Empty;
+                                           materialQuantity = 1;
+                                           materialUnitId = 0;
+                                       })">
+                                + Add Material
+                            </MudButton>
+                        }
+
+                        <MudDivider Class="my-2" />
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">
+                            Finish Intervention
+                        </MudText>
+
+                        @if (activeFinishInterventionId == plannedIntervention.Id)
+                        {
+                            <MudGrid>
+                                <MudItem xs="12" sm="3">
+                                    <MudDatePicker @bind-Date="startDate"
+                                                   Label="Start Date"
+                                                   Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="12" sm="3">
+                                    <MudTimePicker @bind-Time="startTime"
+                                                   Label="Start Time"
+                                                   Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="12" sm="3">
+                                    <MudDatePicker @bind-Date="endDate"
+                                                   Label="End Date"
+                                                   Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="12" sm="3">
+                                    <MudTimePicker @bind-Time="endTime"
+                                                   Label="End Time"
+                                                   Variant="Variant.Outlined" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="finishNote"
+                                                  Label="Note"
+                                                  Variant="Variant.Outlined"
+                                                  Lines="2" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudStack Row="true">
+                                        <MudButton Variant="Variant.Filled"
+                                                   Color="Color.Success"
+                                                   OnClick="@(() => FinishIntervention(
+                                                       plannedIntervention.Id, true))">
+                                            Complete Successfully
+                                        </MudButton>
+                                        <MudButton Variant="Variant.Filled"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => FinishIntervention(
+                                                       plannedIntervention.Id, false))">
+                                            Mark as Failed
+                                        </MudButton>
+                                        <MudButton Variant="Variant.Text"
+                                                   OnClick="@(() =>
+                                                       activeFinishInterventionId = 0)">
+                                            Cancel
+                                        </MudButton>
+                                    </MudStack>
+                                </MudItem>
+                            </MudGrid>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Success"
+                                       Size="Size.Small"
+                                       OnClick="@(() => {
+                                           activeFinishInterventionId = plannedIntervention.Id;
+                                           startDate = DateTime.Today;
+                                           endDate = DateTime.Today;
+                                           finishNote = string.Empty;
+                                       })">
+                                Finish Intervention
+                            </MudButton>
+                        }
                     </MudPaper>
                 }
-            }
-        </MudPaper>
+
+                @{
+                    var failedInterventions = assignment.Interventions
+                        .Where(i => i.InterventionStatusName == "Failed")
+                        .ToList();
+                }
+
+                @if (failedInterventions.Any())
+                {
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color: red;">
+                        Failed Interventions (@failedInterventions.Count)
+                    </MudText>
+                    @foreach (var fi in failedInterventions)
+                    {
+                        <MudPaper Class="pa-2 mb-1" Outlined="true">
+                            <MudText Typo="Typo.body2">
+                                @fi.CreatedAt.ToString("dd.MM.yyyy") —
+                                @(fi.Note ?? "No note")
+                            </MudText>
+                        </MudPaper>
+                    }
+                }
+            </MudPaper>
+        }
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            No active assignments.
+        </MudAlert>
+    }
+
+    @if (completedAssignments.Any())
+    {
+        <MudDivider Class="my-4" />
+        <MudText Typo="Typo.h5" Class="mb-3" Style="color: grey;">
+            Completed Assignments
+        </MudText>
+
+        @foreach (var assignment in completedAssignments)
+        {
+            <MudPaper Class="pa-3 mb-3" Style="opacity: 0.7;">
+                <MudText Typo="Typo.subtitle1">@assignment.FaultReportTitle</MudText>
+                <MudText Typo="Typo.body2">
+                    @assignment.LocationName —
+                    @assignment.FaultStatusName —
+                    @assignment.AssignedAt.ToString("dd.MM.yyyy")
+                </MudText>
+
+                @foreach (var intervention in assignment.Interventions
+                    .Where(i => i.InterventionStatusName == "Completed"))
+                {
+                    <MudText Typo="Typo.body2" Class="mt-1">
+                        ✓ Completed: @intervention.FinishedAt?.ToString("dd.MM.yyyy HH:mm")
+                        — @intervention.Note
+                    </MudText>
+                    @foreach (var mat in intervention.Materials)
+                    {
+                        <MudText Typo="Typo.caption">
+                            &nbsp;&nbsp;• @mat.MaterialName —
+                            @mat.Quantity @mat.MaterialUnitName
+                        </MudText>
+                    }
+                }
+            </MudPaper>
+        }
     }
 }
 
-@if (showFinishDialog && finishingIntervention is not null)
+@if (!string.IsNullOrWhiteSpace(message))
 {
-    <MudDialog @bind-IsVisible="showFinishDialog">
-        <TitleContent>
-            <MudText Typo="Typo.h6">
-                @(finishSuccessful ? "Finish Intervention" : "Mark as Failed")
-            </MudText>
-        </TitleContent>
-        <DialogContent>
-            <MudDatePicker @bind-Date="startDate"
-                           Label="Start Date"
-                           Variant="Variant.Outlined"
-                           Class="mb-3" />
-            <MudTimePicker @bind-Time="startTime"
-                           Label="Start Time"
-                           Variant="Variant.Outlined"
-                           Class="mb-3" />
-            <MudDatePicker @bind-Date="endDate"
-                           Label="End Date"
-                           Variant="Variant.Outlined"
-                           Class="mb-3" />
-            <MudTimePicker @bind-Time="endTime"
-                           Label="End Time"
-                           Variant="Variant.Outlined"
-                           Class="mb-3" />
-            <MudTextField @bind-Value="finishForm.Note"
-                          Label="Note"
-                          Variant="Variant.Outlined"
-                          Lines="3"
-                          Class="mb-3" />
-        </DialogContent>
-        <DialogActions>
-            <MudButton OnClick="@(() => showFinishDialog = false)">Cancel</MudButton>
-            <MudButton Variant="Variant.Filled"
-                       Color="@(finishSuccessful ? Color.Success : Color.Error)"
-                       OnClick="FinishIntervention">
-                Confirm
-            </MudButton>
-        </DialogActions>
-    </MudDialog>
+    <MudAlert Severity="@messageSeverity" Class="mt-4"
+              ShowCloseIcon="true"
+              CloseIconClicked="@(() => message = null)">
+        @message
+    </MudAlert>
 }
 
 @code {
     private List<WorkAssignmentDto> assignments = new();
-    private List<LookupDto> materials = new();
     private List<LookupDto> materialUnits = new();
-    private InterventionMaterialCreateDto materialForm = new();
-    private InterventionFinishDto finishForm = new();
-    private InterventionDto? finishingIntervention;
-    private bool isLoading = true;
-    private bool showFinishDialog = false;
-    private bool finishSuccessful = true;
+
+private IEnumerable<WorkAssignmentDto> activeAssignments =>
+    assignments.Where(a => a.IsActive &&
+        a.FaultStatusName != "Resolved" &&
+        a.FaultStatusName != "Closed");
+
+private IEnumerable<WorkAssignmentDto> completedAssignments =>
+    assignments.Where(a => !a.IsActive ||
+        a.FaultStatusName == "Resolved" ||
+        a.FaultStatusName == "Closed");
+
+    private int activeMaterialInterventionId = 0;
+    private string materialName = string.Empty;
+    private decimal materialQuantity = 1;
+    private int materialUnitId = 0;
+
+    private int activeFinishInterventionId = 0;
     private DateTime? startDate;
     private TimeSpan? startTime;
     private DateTime? endDate;
     private TimeSpan? endTime;
+    private string finishNote = string.Empty;
+
+    private bool isLoading = true;
+    private string? message;
+    private Severity messageSeverity = Severity.Success;
 
     protected override async Task OnInitializedAsync()
     {
@@ -201,12 +357,14 @@ else
         isLoading = true;
         try
         {
-            assignments = await Http.GetFromJsonAsync<List<WorkAssignmentDto>>(
-                "api/workassignments/mine") ?? new();
-            materials = await Http.GetFromJsonAsync<List<LookupDto>>(
-                "api/lookups/materials") ?? new();
-            materialUnits = await Http.GetFromJsonAsync<List<LookupDto>>(
-                "api/lookups/material-units") ?? new();
+            var t1 = Http.GetFromJsonAsync<List<WorkAssignmentDto>>(
+                "api/workassignments/mine");
+            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/material-units");
+
+            await Task.WhenAll(t1, t2);
+
+            assignments = t1.Result ?? new();
+            materialUnits = t2.Result ?? new();
         }
         catch { }
         finally { isLoading = false; }
@@ -218,63 +376,193 @@ else
         {
             var dto = new InterventionCreateDto { WorkAssignmentId = assignmentId };
             var response = await Http.PostAsJsonAsync("api/interventions", dto);
-            if (response.IsSuccessStatusCode)
-                await LoadData();
-        }
-        catch { }
-    }
 
-    private void OpenFinishDialog(InterventionDto intervention, bool successful)
-    {
-        finishingIntervention = intervention;
-        finishSuccessful = successful;
-        finishForm = new InterventionFinishDto
-        {
-            Id = intervention.Id,
-            IsSuccessful = successful
-        };
-        startDate = null;
-        startTime = null;
-        endDate = null;
-        endTime = null;
-        showFinishDialog = true;
-    }
-
-    private async Task FinishIntervention()
-    {
-        try
-        {
-            if (startDate.HasValue && startTime.HasValue)
-                finishForm.StartedAt = startDate.Value.Date + startTime.Value;
-
-            if (endDate.HasValue && endTime.HasValue)
-                finishForm.FinishedAt = endDate.Value.Date + endTime.Value;
-
-            var response = await Http.PutAsJsonAsync(
-                $"api/interventions/{finishForm.Id}/finish", finishForm);
             if (response.IsSuccessStatusCode)
             {
-                showFinishDialog = false;
+                message = "Intervention started.";
+                messageSeverity = Severity.Success;
                 await LoadData();
             }
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
+                messageSeverity = Severity.Error;
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
     }
-
 
     private async Task AddMaterial(int interventionId)
     {
+        if (string.IsNullOrWhiteSpace(materialName))
+        {
+            message = "Material name is required.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (materialQuantity <= 0)
+        {
+            message = "Quantity must be greater than zero.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (materialUnitId == 0)
+        {
+            message = "Please select a unit.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
         try
         {
-            materialForm.InterventionId = interventionId;
+            var materialsLookup = await Http.GetFromJsonAsync<List<LookupDto>>(
+                "api/lookups/materials") ?? new();
+
+            var existing = materialsLookup.FirstOrDefault(m =>
+                m.Name.Equals(materialName, StringComparison.OrdinalIgnoreCase));
+
+            int materialId;
+
+            if (existing is not null)
+            {
+                materialId = existing.Id;
+            }
+            else
+            {
+                var createResponse = await Http.PostAsJsonAsync("api/materials",
+                    new CreateMaterialDto { Name = materialName });
+
+                if (!createResponse.IsSuccessStatusCode)
+                {
+                    message = "Error creating material.";
+                    messageSeverity = Severity.Error;
+                    return;
+                }
+
+                var newMaterial = await createResponse.Content
+                    .ReadFromJsonAsync<LookupDto>();
+                materialId = newMaterial!.Id;
+            }
+
+            var dto = new InterventionMaterialCreateDto
+            {
+                InterventionId = interventionId,
+                MaterialId = materialId,
+                Quantity = materialQuantity,
+                MaterialUnitId = materialUnitId
+            };
+
             var response = await Http.PostAsJsonAsync(
-                $"api/interventions/{interventionId}/materials", materialForm);
+                $"api/interventions/{interventionId}/materials", dto);
+
             if (response.IsSuccessStatusCode)
             {
-                materialForm = new InterventionMaterialCreateDto();
+                message = "Material added.";
+                messageSeverity = Severity.Success;
+                activeMaterialInterventionId = 0;
+                materialName = string.Empty;
+                materialQuantity = 1;
+                materialUnitId = 0;
                 await LoadData();
             }
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
+                messageSeverity = Severity.Error;
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
     }
+
+    private async Task FinishIntervention(int interventionId, bool successful)
+    {
+        if (!startDate.HasValue || !startTime.HasValue ||
+            !endDate.HasValue || !endTime.HasValue)
+        {
+            message = "Please enter start and end date/time.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(finishNote))
+        {
+            message = "Note is required.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            var dto = new InterventionFinishDto
+            {
+                Id = interventionId,
+                StartedAt = startDate.Value.Date + startTime.Value,
+                FinishedAt = endDate.Value.Date + endTime.Value,
+                Note = finishNote,
+                IsSuccessful = successful
+            };
+
+            var response = await Http.PutAsJsonAsync(
+                $"api/interventions/{interventionId}/finish", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = successful
+                    ? "Intervention completed. Report marked as Resolved."
+                    : "Intervention marked as failed. You can start a new one.";
+                messageSeverity = successful ? Severity.Success : Severity.Warning;
+                activeFinishInterventionId = 0;
+                startDate = null;
+                startTime = null;
+                endDate = null;
+                endTime = null;
+                finishNote = string.Empty;
+                await LoadData();
+            }
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+    }
+
+    private Color GetPriorityColor(string? priority) => priority switch
+    {
+        "Critical" => Color.Error,
+        "High" => Color.Warning,
+        "Medium" => Color.Info,
+        _ => Color.Default
+    };
+
+    private Color GetStatusColor(string? status) => status switch
+    {
+        "Closed" => Color.Success,
+        "Resolved" => Color.Info,
+        "In Progress" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private Color GetInterventionStatusColor(string? status) => status switch
+    {
+        "Completed" => Color.Success,
+        "Failed" => Color.Error,
+        "In Progress" => Color.Warning,
+        _ => Color.Default
+    };
 }

@@ -10,7 +10,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddMudServices();
 
 builder.Services.AddSingleton<CurrentUserService>();
-builder.Services.AddTransient<AuthHeaderHandler>();
+builder.Services.AddSingleton<AuthHeaderHandler>();
 builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddHttpClient("ReparoApi", client =>

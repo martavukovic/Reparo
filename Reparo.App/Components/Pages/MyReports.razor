@@ -1,8 +1,6 @@
 ﻿@page "/my-reports"
-@rendermode RenderMode.InteractiveServer
 @inject HttpClient Http
 @inject CurrentUserService CurrentUser
-@inject NavigationManager Navigation
 
 <PageTitle>My Reports - Reparo</PageTitle>
 
@@ -17,9 +15,60 @@ else
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
                Class="mb-4"
-               OnClick="OpenCreateDialog">
+               OnClick="OpenCreateForm">
         New Report
     </MudButton>
+
+    @if (showForm)
+    {
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">New Fault Report</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.Title"
+                                  Label="Title"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int"
+                               @bind-Value="form.LocationId"
+                               Label="Location"
+                               Variant="Variant.Outlined">
+                        @foreach (var l in locations)
+                        {
+                            <MudSelectItem T="int" Value="@l.Id">@l.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="form.Description"
+                                  Label="Description"
+                                  Variant="Variant.Outlined"
+                                  Lines="3" />
+                </MudItem>
+            </MudGrid>
+
+            <MudStack Row="true" Class="mt-3">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="SaveReport">
+                    Submit
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="@(() => showForm = false)">
+                    Cancel
+                </MudButton>
+            </MudStack>
+
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <MudAlert Severity="@messageSeverity" Class="mt-3">
+                    @message
+                </MudAlert>
+            }
+        </MudPaper>
+    }
 
     @if (isLoading)
     {
@@ -60,49 +109,14 @@ else
     }
 }
 
-@if (showDialog)
-{
-    <MudDialog @bind-IsVisible="showDialog">
-        <TitleContent>
-            <MudText Typo="Typo.h6">New Fault Report</MudText>
-        </TitleContent>
-        <DialogContent>
-            <MudTextField @bind-Value="form.Title"
-                          Label="Title"
-                          Variant="Variant.Outlined"
-                          Class="mb-3" />
-            <MudTextField @bind-Value="form.Description"
-                          Label="Description"
-                          Variant="Variant.Outlined"
-                          Lines="3"
-                          Class="mb-3" />
-            <MudSelect @bind-Value="form.LocationId"
-                       Label="Location"
-                       Variant="Variant.Outlined"
-                       Class="mb-3">
-                @foreach (var l in locations)
-                {
-                    <MudSelectItem Value="@l.Id">@l.Name</MudSelectItem>
-                }
-            </MudSelect>
-        </DialogContent>
-        <DialogActions>
-            <MudButton OnClick="@(() => showDialog = false)">Cancel</MudButton>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       OnClick="SaveReport">
-                Submit
-            </MudButton>
-        </DialogActions>
-    </MudDialog>
-}
-
 @code {
     private List<FaultReportDto> reports = new();
     private List<LookupDto> locations = new();
     private FaultReportCreateDto form = new();
     private bool isLoading = true;
-    private bool showDialog = false;
+    private bool showForm = false;
+    private string? message;
+    private Severity messageSeverity = Severity.Success;
 
     protected override async Task OnInitializedAsync()
     {
@@ -114,35 +128,74 @@ else
         isLoading = true;
         try
         {
-            reports = await Http.GetFromJsonAsync<List<FaultReportDto>>(
-                "api/faultreports/mine") ?? new();
-            locations = await Http.GetFromJsonAsync<List<LookupDto>>(
-                "api/locations/lookup") ?? new();
+            var t1 = Http.GetFromJsonAsync<List<FaultReportDto>>("api/faultreports/mine");
+            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/locations/lookup");
+
+            await Task.WhenAll(t1, t2);
+
+            reports = t1.Result ?? new();
+            locations = t2.Result ?? new();
         }
         catch { }
         finally { isLoading = false; }
     }
 
-    private void OpenCreateDialog()
+    private void OpenCreateForm()
     {
         form = new FaultReportCreateDto();
+
         if (CurrentUser.User?.EmployeeId is not null)
             form.ReportedByEmployeeId = CurrentUser.User.EmployeeId.Value;
-        showDialog = true;
+
+        message = null;
+        showForm = true;
     }
 
     private async Task SaveReport()
     {
+        if (string.IsNullOrWhiteSpace(form.Title))
+        {
+            message = "Title is required.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (form.LocationId == 0)
+        {
+            message = "Please select a location.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (form.ReportedByEmployeeId == 0)
+        {
+            message = "Your account is not linked to an employee. Please contact admin.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
         try
         {
             var response = await Http.PostAsJsonAsync("api/faultreports", form);
+
             if (response.IsSuccessStatusCode)
             {
-                showDialog = false;
+                message = "Report submitted successfully.";
+                messageSeverity = Severity.Success;
+                showForm = false;
                 await LoadData();
             }
+            else
+            {
+                message = $"Error: {await response.Content.ReadAsStringAsync()}";
+                messageSeverity = Severity.Error;
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
     }
 
     private Color GetStatusColor(string? status) => status switch

@@ -1,5 +1,4 @@
 ﻿@page "/users"
-@rendermode RenderMode.InteractiveServer
 @inject HttpClient Http
 @inject CurrentUserService CurrentUser
 
@@ -7,42 +6,336 @@
 
 <MudText Typo="Typo.h4" Class="mb-4">User Management</MudText>
 
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           Class="mb-4"
+           OnClick="OpenCreateForm">
+    Add User
+</MudButton>
+
+@if (showCreateForm)
+{
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Add New User</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="createForm.Email"
+                              Label="Email"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="createForm.Password"
+                              Label="Password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?"
+                           @bind-Value="createForm.EmployeeId"
+                           Label="Link to Employee"
+                           Variant="Variant.Outlined"
+                           Clearable="true">
+                    @foreach (var e in employees)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)e.Id)">
+                            @e.Name
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudText Typo="Typo.body2" Class="mb-2">Roles</MudText>
+                @foreach (var role in allRoles)
+                {
+                    <MudCheckBox T="bool"
+                                 Value="@createForm.Roles.Contains(role)"
+                                 ValueChanged="@(v => ToggleCreateRole(role, v))"
+                                 Label="@role" />
+                }
+            </MudItem>
+        </MudGrid>
+
+        <MudStack Row="true" Class="mt-3">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="CreateUser">
+                Create
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       OnClick="@(() => showCreateForm = false)">
+                Cancel
+            </MudButton>
+        </MudStack>
+
+        @if (!string.IsNullOrWhiteSpace(createMessage))
+        {
+            <MudAlert Severity="@createMessageSeverity" Class="mt-3">
+                @createMessage
+            </MudAlert>
+        }
+    </MudPaper>
+}
+
 @if (!CurrentUser.HasRole("Admin"))
 {
     <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
 }
 else
 {
-    <MudAlert Severity="Severity.Info" Class="mb-4">
-        User management is handled through the API seeder.
-        Demo accounts are available for all roles.
-    </MudAlert>
-
-    <MudPaper Class="pa-4">
-        <MudText Typo="Typo.h6" Class="mb-3">Demo Accounts</MudText>
-        <MudTable Items="@demoUsers" Hover="true" Striped="true" Dense="true">
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudTable Items="@users" Hover="true" Striped="true" Dense="true">
             <HeaderContent>
                 <MudTh>Email</MudTh>
-                <MudTh>Password</MudTh>
                 <MudTh>Roles</MudTh>
+                <MudTh>Employee</MudTh>
+                <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd>@context.Email</MudTd>
-                <MudTd>@context.Password</MudTd>
-                <MudTd>@context.Roles</MudTd>
+                <MudTd>@string.Join(", ", context.Roles)</MudTd>
+                <MudTd>
+                    @(context.EmployeeId.HasValue
+                        ? employees.FirstOrDefault(e => e.Id == context.EmployeeId)?.Name ?? $"ID: {context.EmployeeId}"
+                        : "Not linked")
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@(() => OpenEditForm(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.PersonOff"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeactivateUser(context))" />
+                </MudTd>
             </RowTemplate>
         </MudTable>
-    </MudPaper>
+    }
+
+    @if (showForm)
+    {
+        <MudPaper Class="pa-4 mt-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Edit User</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.body2" Class="mb-1">Email</MudText>
+                    <MudText Typo="Typo.body1">@editingUser?.Email</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?"
+                               @bind-Value="selectedEmployeeId"
+                               Label="Link to Employee"
+                               Variant="Variant.Outlined"
+                               Clearable="true">
+                        @foreach (var e in employees)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)e.Id)">
+                                @e.Name
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body2" Class="mb-2">Roles</MudText>
+                    @foreach (var role in allRoles)
+                    {
+                        <MudCheckBox T="bool"
+                                     Value="@selectedRoles.Contains(role)"
+                                     ValueChanged="@(v => ToggleRole(role, v))"
+                                     Label="@role" />
+                    }
+                </MudItem>
+            </MudGrid>
+
+            <MudStack Row="true" Class="mt-3">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="SaveUser">
+                    Save
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="@(() => showForm = false)">
+                    Cancel
+                </MudButton>
+            </MudStack>
+
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <MudAlert Severity="@messageSeverity" Class="mt-3">
+                    @message
+                </MudAlert>
+            }
+        </MudPaper>
+    }
 }
 
 @code {
-    private List<DemoUser> demoUsers = new()
-    {
-        new DemoUser("admin@reparo.local", "Admin123!", "Admin, Manager"),
-        new DemoUser("manager@reparo.local", "Manager123!", "Manager"),
-        new DemoUser("tech@reparo.local", "Tech123!", "Technician"),
-        new DemoUser("reporter@reparo.local", "Reporter123!", "Reporter")
-    };
+    private List<UserDto> users = new();
+    private List<LookupDto> employees = new();
+    private List<string> allRoles = new() { "Admin", "Manager", "Technician", "Reporter" };
+    private List<string> selectedRoles = new();
+    private UserDto? editingUser;
+    private int? selectedEmployeeId;
+    private bool isLoading = true;
+    private bool showForm = false;
+    private string? message;
+    private Severity messageSeverity = Severity.Success;
+    private bool showCreateForm = false;
+    private CreateUserDto createForm = new();
+    private string? createMessage;
+    private Severity createMessageSeverity = Severity.Success;
 
-    private record DemoUser(string Email, string Password, string Roles);
+    private void OpenCreateForm()
+    {
+        createForm = new CreateUserDto();
+        createMessage = null;
+        showCreateForm = true;
+    }
+
+    private void ToggleCreateRole(string role, bool add)
+    {
+        if (add && !createForm.Roles.Contains(role))
+            createForm.Roles.Add(role);
+        else if (!add)
+            createForm.Roles.Remove(role);
+    }
+
+    private async Task CreateUser()
+    {
+        if (string.IsNullOrWhiteSpace(createForm.Email))
+        {
+            createMessage = "Email is required.";
+            createMessageSeverity = Severity.Error;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(createForm.Password))
+        {
+            createMessage = "Password is required.";
+            createMessageSeverity = Severity.Error;
+            return;
+        }
+
+        if (!createForm.Roles.Any())
+        {
+            createMessage = "Please select at least one role.";
+            createMessageSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/users", createForm);
+
+            if (response.IsSuccessStatusCode)
+            {
+                createMessage = "User created successfully.";
+                createMessageSeverity = Severity.Success;
+                showCreateForm = false;
+                await LoadData();
+            }
+            else
+            {
+                createMessage = await response.Content.ReadAsStringAsync();
+                createMessageSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            createMessage = $"Error: {ex.Message}";
+            createMessageSeverity = Severity.Error;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            var t1 = Http.GetFromJsonAsync<List<UserDto>>("api/users");
+            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/employees");
+
+            await Task.WhenAll(t1, t2);
+
+            users = t1.Result ?? new();
+            employees = t2.Result ?? new();
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+
+    private void OpenEditForm(UserDto user)
+    {
+        editingUser = user;
+        selectedEmployeeId = user.EmployeeId;
+        selectedRoles = new List<string>(user.Roles);
+        message = null;
+        showForm = true;
+    }
+
+    private void ToggleRole(string role, bool add)
+    {
+        if (add && !selectedRoles.Contains(role))
+            selectedRoles.Add(role);
+        else if (!add)
+            selectedRoles.Remove(role);
+    }
+
+    private async Task SaveUser()
+    {
+        if (editingUser is null) return;
+
+        try
+        {
+            if (selectedEmployeeId.HasValue)
+            {
+                await Http.PutAsJsonAsync(
+                    $"api/users/{editingUser.Id}/employee",
+                    selectedEmployeeId.Value);
+            }
+
+            await Http.PutAsJsonAsync(
+                $"api/users/{editingUser.Id}/roles",
+                selectedRoles);
+
+            message = "User updated successfully.";
+            messageSeverity = Severity.Success;
+            showForm = false;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+    }
+
+    private async Task DeactivateUser(UserDto user)
+    {
+        try
+        {
+            await Http.PutAsJsonAsync($"api/users/{user.Id}/deactivate", new { });
+            message = $"{user.Email} has been deactivated.";
+            messageSeverity = Severity.Success;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+    }
+
+
 }

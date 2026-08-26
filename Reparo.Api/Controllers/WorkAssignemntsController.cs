@@ -128,10 +128,14 @@ public class WorkAssignmentsController : ControllerBase
     {
         var report = await _context.FaultReports
             .Include(f => f.Assignments)
+            .Include(f => f.FaultStatus)
             .FirstOrDefaultAsync(f => f.Id == dto.FaultReportId && !f.IsDeleted);
 
         if (report is null)
             return NotFound("Report not found.");
+
+        if (report.FaultStatus?.Name == "Resolved" || report.FaultStatus?.Name == "Closed")
+            return BadRequest("Cannot assign a resolved or closed fault report.");
 
         var technician = await _context.Employees
             .FirstOrDefaultAsync(e => e.Id == dto.TechnicianId
@@ -192,7 +196,7 @@ public class WorkAssignmentsController : ControllerBase
             .FirstOrDefaultAsync(u => u.Id == userId);
 
         if (user?.EmployeeId is null)
-            return BadRequest("User is not associated with an employee.");
+            return BadRequest("Korisnik nije povezan s izvršiteljem.");
 
         var assignments = await _context.WorkAssignments
             .Include(a => a.FaultReport)
@@ -204,6 +208,14 @@ public class WorkAssignmentsController : ControllerBase
             .Include(a => a.FaultReport)
                 .ThenInclude(f => f.FaultStatus)
             .Include(a => a.Technician)
+            .Include(a => a.Interventions)
+                .ThenInclude(i => i.InterventionStatus)
+            .Include(a => a.Interventions)
+                .ThenInclude(i => i.Materials)
+                    .ThenInclude(m => m.Material)
+            .Include(a => a.Interventions)
+                .ThenInclude(i => i.Materials)
+                    .ThenInclude(m => m.MaterialUnit)
             .Where(a => a.TechnicianId == user.EmployeeId)
             .Select(a => new WorkAssignmentDto
             {
@@ -220,7 +232,28 @@ public class WorkAssignmentsController : ControllerBase
                 TechnicianName = a.Technician.FirstName + " " + a.Technician.LastName,
                 AssignedAt = a.AssignedAt,
                 IsActive = a.IsActive,
-                Note = a.Note
+                Note = a.Note,
+                Interventions = a.Interventions.Select(i => new InterventionDto
+                {
+                    Id = i.Id,
+                    WorkAssignmentId = i.WorkAssignmentId,
+                    InterventionStatusId = i.InterventionStatusId,
+                    InterventionStatusName = i.InterventionStatus.Name,
+                    StartedAt = i.StartedAt,
+                    FinishedAt = i.FinishedAt,
+                    DurationMinutes = i.DurationMinutes,
+                    Note = i.Note,
+                    CreatedAt = i.CreatedAt,
+                    Materials = i.Materials.Select(m => new InterventionMaterialDto
+                    {
+                        Id = m.Id,
+                        MaterialId = m.MaterialId,
+                        MaterialName = m.Material.Name,
+                        Quantity = m.Quantity,
+                        MaterialUnitId = m.MaterialUnitId,
+                        MaterialUnitName = m.MaterialUnit.Name
+                    }).ToList()
+                }).ToList()
             })
             .ToListAsync();
 

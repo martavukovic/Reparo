@@ -1,5 +1,4 @@
 ﻿@page "/fault-reports"
-@rendermode RenderMode.InteractiveServer
 @inject HttpClient Http
 @inject CurrentUserService CurrentUser
 @inject NavigationManager Navigation
@@ -14,6 +13,75 @@
 }
 else
 {
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               Class="mb-4"
+               OnClick="OpenCreateForm">
+        New Fault Report
+    </MudButton>
+
+    @if (showForm)
+    {
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">New Fault Report</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.Title"
+                                  Label="Title"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int"
+                               @bind-Value="form.LocationId"
+                               Label="Location"
+                               Variant="Variant.Outlined">
+                        @foreach (var l in locationLookup)
+                        {
+                            <MudSelectItem T="int" Value="@l.Id">@l.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="form.Description"
+                                  Label="Description"
+                                  Variant="Variant.Outlined"
+                                  Lines="3" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int"
+                               @bind-Value="form.ReportedByEmployeeId"
+                               Label="Reported By"
+                               Variant="Variant.Outlined">
+                        @foreach (var e in employees)
+                        {
+                            <MudSelectItem T="int" Value="@e.Id">@e.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudStack Row="true" Class="mt-3">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="SaveReport">
+                    Save
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="CloseForm">
+                    Cancel
+                </MudButton>
+            </MudStack>
+
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <MudAlert Severity="@messageSeverity" Class="mt-3">
+                    @message
+                </MudAlert>
+            }
+        </MudPaper>
+    }
+
     <MudPaper Class="pa-4 mb-4">
         <MudGrid>
             <MudItem xs="12" sm="4">
@@ -24,46 +92,50 @@ else
                               AdornmentIcon="@Icons.Material.Filled.Search" />
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudSelect @bind-Value="filter.FaultStatusId"
+                <MudSelect T="int?"
+                           @bind-Value="filter.FaultStatusId"
                            Label="Status"
                            Variant="Variant.Outlined"
                            Clearable="true">
                     @foreach (var s in statuses)
                     {
-                        <MudSelectItem Value="@((int?)s.Id)">@s.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudSelect @bind-Value="filter.FaultPriorityId"
+                <MudSelect T="int?"
+                           @bind-Value="filter.FaultPriorityId"
                            Label="Priority"
                            Variant="Variant.Outlined"
                            Clearable="true">
                     @foreach (var p in priorities)
                     {
-                        <MudSelectItem Value="@((int?)p.Id)">@p.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)p.Id)">@p.Name</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudSelect @bind-Value="filter.LocationId"
+                <MudSelect T="int?"
+                           @bind-Value="filter.LocationId"
                            Label="Location"
                            Variant="Variant.Outlined"
                            Clearable="true">
                     @foreach (var l in locationLookup)
                     {
-                        <MudSelectItem Value="@((int?)l.Id)">@l.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)l.Id)">@l.Name</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudSelect @bind-Value="filter.FaultTypeId"
+                <MudSelect T="int?"
+                           @bind-Value="filter.FaultTypeId"
                            Label="Fault Type"
                            Variant="Variant.Outlined"
                            Clearable="true">
                     @foreach (var t in faultTypes)
                     {
-                        <MudSelectItem Value="@((int?)t.Id)">@t.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)t.Id)">@t.Name</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -85,6 +157,10 @@ else
     {
         <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
     }
+    else if (reports.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No fault reports found.</MudAlert>
+    }
     else
     {
         <MudTable Items="@reports" Hover="true" Striped="true" Dense="true">
@@ -96,6 +172,7 @@ else
                 <MudTh>Status</MudTh>
                 <MudTh>Assigned To</MudTh>
                 <MudTh>Deadline</MudTh>
+                <MudTh>Created</MudTh>
                 <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
@@ -118,6 +195,7 @@ else
                 </MudTd>
                 <MudTd>@(context.ActiveTechnicianName ?? "-")</MudTd>
                 <MudTd>@(context.Deadline?.ToString("dd.MM.yyyy") ?? "-")</MudTd>
+                <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy")</MudTd>
                 <MudTd>
                     <MudIconButton Icon="@Icons.Material.Filled.Visibility"
                                    Size="Size.Small"
@@ -135,8 +213,13 @@ else
     private List<LookupDto> priorities = new();
     private List<LookupDto> locationLookup = new();
     private List<LookupDto> faultTypes = new();
+    private List<LookupDto> employees = new();
     private FaultReportFilterDto filter = new();
+    private FaultReportCreateDto form = new();
     private bool isLoading = true;
+    private bool showForm = false;
+    private string? message;
+    private Severity messageSeverity = Severity.Success;
 
     protected override async Task OnInitializedAsync()
     {
@@ -146,14 +229,23 @@ else
 
     private async Task LoadLookups()
     {
-        statuses = await Http.GetFromJsonAsync<List<LookupDto>>(
-            "api/lookups/fault-statuses") ?? new();
-        priorities = await Http.GetFromJsonAsync<List<LookupDto>>(
-            "api/lookups/fault-priorities") ?? new();
-        locationLookup = await Http.GetFromJsonAsync<List<LookupDto>>(
-            "api/locations/lookup") ?? new();
-        faultTypes = await Http.GetFromJsonAsync<List<LookupDto>>(
-            "api/lookups/fault-types") ?? new();
+        try
+        {
+            var t1 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/fault-statuses");
+            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/fault-priorities");
+            var t3 = Http.GetFromJsonAsync<List<LookupDto>>("api/locations/lookup");
+            var t4 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/fault-types");
+            var t5 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/employees");
+
+            await Task.WhenAll(t1, t2, t3, t4, t5);
+
+            statuses = t1.Result ?? new();
+            priorities = t2.Result ?? new();
+            locationLookup = t3.Result ?? new();
+            faultTypes = t4.Result ?? new();
+            employees = t5.Result ?? new();
+        }
+        catch { }
     }
 
     private async Task LoadReports()
@@ -193,6 +285,66 @@ else
     {
         filter = new FaultReportFilterDto();
         await LoadReports();
+    }
+
+    private void OpenCreateForm()
+    {
+        form = new FaultReportCreateDto();
+        message = null;
+        showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        showForm = false;
+        message = null;
+    }
+
+    private async Task SaveReport()
+    {
+        if (string.IsNullOrWhiteSpace(form.Title))
+        {
+            message = "Title is required.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (form.LocationId == 0)
+        {
+            message = "Please select a location.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (form.ReportedByEmployeeId == 0)
+        {
+            message = "Please select an employee.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/faultreports", form);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "Fault report created successfully.";
+                messageSeverity = Severity.Success;
+                showForm = false;
+                await LoadReports();
+            }
+            else
+            {
+                message = $"Error: {await response.Content.ReadAsStringAsync()}";
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
     }
 
     private Color GetPriorityColor(string? priority) => priority switch

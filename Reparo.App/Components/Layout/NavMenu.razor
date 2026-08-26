@@ -57,6 +57,13 @@
             </MudNavLink>
         }
 
+        @if (CurrentUser.HasAnyRole("Admin", "Manager"))
+        {
+            <MudNavLink Href="/employees" Icon="@Icons.Material.Filled.Badge">
+                Employees
+            </MudNavLink>
+        }
+
         <MudDivider Class="my-2" />
 
         <MudNavLink Icon="@Icons.Material.Filled.Logout"

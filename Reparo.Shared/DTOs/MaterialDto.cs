@@ -17,3 +17,8 @@ public class InterventionMaterialCreateDto
     public decimal Quantity { get; set; }
     public int MaterialUnitId { get; set; }
 }
+
+public class CreateMaterialDto
+{
+    public string Name { get; set; } = string.Empty;
+}

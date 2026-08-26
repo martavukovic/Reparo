@@ -15,22 +15,20 @@
     private void Cancel() => MudDialog.Cancel();
 }
 
-<MudDialogContent>
-    <div style="padding: 16px 8px;">
-        <MudText Typo="Typo.body1">@Message</MudText>
-    </div>
-</MudDialogContent>
+<div style="padding: 16px 24px;">
+    <MudText Typo="Typo.body1">@Message</MudText>
+</div>
 
 <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 8px 24px 16px 24px;">
     <MudButton Variant="Variant.Text"
                Color="Color.Default"
-               Style="text-transform: none; font-size: 14px;"
+               Style="text-transform: none;"
                OnClick="Cancel">
         Cancel
     </MudButton>
     <MudButton Variant="Variant.Filled"
                Color="@ConfirmColor"
-               Style="text-transform: none; font-size: 14px;"
+               Style="text-transform: none;"
                OnClick="Confirm">
         @ConfirmText
     </MudButton>

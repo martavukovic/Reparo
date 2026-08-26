@@ -29,11 +29,11 @@ public class AppDbContext : IdentityDbContext<AppUser>
         base.OnModelCreating(builder);
 
         builder.Entity<LocationType>().HasData(
-      new LocationType { Id = 1, Name = "Administrative Building" },
-      new LocationType { Id = 2, Name = "School" },
-      new LocationType { Id = 3, Name = "Healthcare Facility" },
-      new LocationType { Id = 4, Name = "Warehouse" }
-  );
+            new LocationType { Id = 1, Name = "Administrative Building" },
+            new LocationType { Id = 2, Name = "School" },
+            new LocationType { Id = 3, Name = "Healthcare Facility" },
+            new LocationType { Id = 4, Name = "Warehouse" }
+        );
 
         builder.Entity<FaultType>().HasData(
             new FaultType { Id = 1, Name = "Electrical" },
@@ -73,6 +73,29 @@ public class AppDbContext : IdentityDbContext<AppUser>
             new MaterialUnit { Id = 3, Name = "Liter" },
             new MaterialUnit { Id = 4, Name = "Kilogram" },
             new MaterialUnit { Id = 5, Name = "Package" }
+        );
+
+        builder.Entity<Location>().HasData(
+            new Location { Id = 1, Name = "County Hall", Address = "Main Street 1", LocationTypeId = 1, IsActive = true },
+            new Location { Id = 2, Name = "Central School", Address = "School Avenue 5", LocationTypeId = 2, IsActive = true },
+            new Location { Id = 3, Name = "General Hospital", Address = "Hospital Road 10", LocationTypeId = 3, IsActive = true },
+            new Location { Id = 4, Name = "Main Warehouse", Address = "Industrial Zone 3", LocationTypeId = 4, IsActive = true }
+        );
+
+        builder.Entity<Employee>().HasData(
+            new Employee { Id = 1, FirstName = "John", LastName = "Smith", LocationId = 1, IsTechnician = false, IsActive = true },
+            new Employee { Id = 2, FirstName = "Sarah", LastName = "Johnson", LocationId = 2, IsTechnician = false, IsActive = true },
+            new Employee { Id = 3, FirstName = "Mike", LastName = "Williams", LocationId = 1, IsTechnician = true, IsActive = true },
+            new Employee { Id = 4, FirstName = "Tom", LastName = "Brown", LocationId = 3, IsTechnician = true, IsActive = true },
+            new Employee { Id = 5, FirstName = "Emma", LastName = "Davis", LocationId = 4, IsTechnician = false, IsActive = true }
+        );
+
+        builder.Entity<Material>().HasData(
+            new Material { Id = 1, Name = "Cable 2.5mm", IsActive = true },
+            new Material { Id = 2, Name = "Light Bulb LED", IsActive = true },
+            new Material { Id = 3, Name = "PVC Pipe 20mm", IsActive = true },
+            new Material { Id = 4, Name = "Sealant", IsActive = true },
+            new Material { Id = 5, Name = "Screw Set", IsActive = true }
         );
     }
 }

@@ -74,6 +74,15 @@ else
             </MudPaper>
         </MudItem>
 
+        @if (report.FaultStatusName != "Resolved" &&
+             report.FaultStatusName != "Closed")
+        {
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Assign Technician</MudText>
+                // ... ostatak forme
+            </MudPaper>
+        }
+
         @if (CurrentUser.HasAnyRole("Admin", "Manager"))
         {
             <MudItem xs="12" md="4">

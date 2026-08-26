@@ -13,6 +13,8 @@ public class AuthHeaderHandler : DelegatingHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
+        Console.WriteLine($"Handler called. User: {_currentUser.User?.Email}, Token: {(_currentUser.User?.Token is not null ? "EXISTS" : "NULL")}");
+
         if (_currentUser.User?.Token is not null)
         {
             request.Headers.Authorization =

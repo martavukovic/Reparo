@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Reparo.Api.Data;
 using Reparo.Shared.DTOs;
 using Reparo.Shared.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Reparo.Api.Controllers;
 
@@ -43,6 +44,7 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpPost]
+    [Consumes("multipart/form-data")]
     public async Task<ActionResult<AttachmentDto>> Upload(
         [FromForm] int faultReportId,
         [FromForm] int? interventionId,

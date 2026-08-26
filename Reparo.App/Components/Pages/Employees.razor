@@ -1,0 +1,236 @@
+﻿@page "/employees"
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+
+<PageTitle>Employees - Reparo</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Employees</MudText>
+
+@if (!CurrentUser.HasAnyRole("Admin", "Manager"))
+{
+    <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
+}
+else
+{
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               Class="mb-4"
+               OnClick="OpenCreateForm">
+        Add Employee
+    </MudButton>
+
+    @if (showForm)
+    {
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">
+                @(editingId == 0 ? "Add Employee" : "Edit Employee")
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.FirstName"
+                                  Label="First Name"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.LastName"
+                                  Label="Last Name"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int"
+                               @bind-Value="form.LocationId"
+                               Label="Location"
+                               Variant="Variant.Outlined">
+                        @foreach (var l in locations)
+                        {
+                            <MudSelectItem T="int" Value="@l.Id">@l.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3" Class="d-flex align-center">
+                    <MudCheckBox @bind-Value="form.IsTechnician"
+                                 Label="Is Technician" />
+                </MudItem>
+                <MudItem xs="12" sm="3" Class="d-flex align-center">
+                    <MudCheckBox @bind-Value="form.IsActive"
+                                 Label="Active" />
+                </MudItem>
+            </MudGrid>
+
+            <MudStack Row="true" Class="mt-3">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="SaveEmployee">
+                    Save
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="CloseForm">
+                    Cancel
+                </MudButton>
+            </MudStack>
+
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <MudAlert Severity="@messageSeverity" Class="mt-3">
+                    @message
+                </MudAlert>
+            }
+        </MudPaper>
+    }
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (employees.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No employees found.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@employees" Hover="true" Striped="true" Dense="true">
+            <HeaderContent>
+                <MudTh>First Name</MudTh>
+                <MudTh>Last Name</MudTh>
+                <MudTh>Location</MudTh>
+                <MudTh>Technician</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.FirstName</MudTd>
+                <MudTd>@context.LastName</MudTd>
+                <MudTd>@context.LocationName</MudTd>
+                <MudTd>
+                    <MudChip T="string"
+                             Color="@(context.IsTechnician ? Color.Info : Color.Default)"
+                             Size="Size.Small">
+                        @(context.IsTechnician ? "Technician" : "Reporter")
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    <MudChip T="string"
+                             Color="@(context.IsActive ? Color.Success : Color.Default)"
+                             Size="Size.Small">
+                        @(context.IsActive ? "Active" : "Inactive")
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@(() => OpenEditForm(context))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+}
+
+@code {
+    private List<EmployeeDto> employees = new();
+    private List<LookupDto> locations = new();
+    private EmployeeCreateDto form = new();
+    private bool isLoading = true;
+    private bool showForm = false;
+    private int editingId = 0;
+    private string? message;
+    private Severity messageSeverity = Severity.Success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            var t1 = Http.GetFromJsonAsync<List<EmployeeDto>>("api/employees");
+            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/locations/lookup");
+
+            await Task.WhenAll(t1, t2);
+
+            employees = t1.Result ?? new();
+            locations = t2.Result ?? new();
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+
+    private void OpenCreateForm()
+    {
+        form = new EmployeeCreateDto { IsActive = true };
+        editingId = 0;
+        message = null;
+        showForm = true;
+    }
+
+    private void OpenEditForm(EmployeeDto employee)
+    {
+        form = new EmployeeCreateDto
+        {
+            FirstName = employee.FirstName,
+            LastName = employee.LastName,
+            LocationId = employee.LocationId,
+            IsTechnician = employee.IsTechnician,
+            IsActive = employee.IsActive
+        };
+        editingId = employee.Id;
+        message = null;
+        showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        showForm = false;
+        message = null;
+    }
+
+    private async Task SaveEmployee()
+    {
+        if (string.IsNullOrWhiteSpace(form.FirstName) ||
+            string.IsNullOrWhiteSpace(form.LastName))
+        {
+            message = "First and last name are required.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (form.LocationId == 0)
+        {
+            message = "Please select a location.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            HttpResponseMessage response;
+
+            if (editingId == 0)
+                response = await Http.PostAsJsonAsync("api/employees", form);
+            else
+                response = await Http.PutAsJsonAsync(
+                    $"api/employees/{editingId}", form);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "Employee saved successfully.";
+                messageSeverity = Severity.Success;
+                showForm = false;
+                await LoadData();
+            }
+            else
+            {
+                message = $"Error: {await response.Content.ReadAsStringAsync()}";
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+    }
+}

@@ -12,6 +12,7 @@ public class WorkAssignmentDto
     public int TechnicianId { get; set; }
     public string TechnicianName { get; set; } = string.Empty;
     public DateTime AssignedAt { get; set; }
+    public string? AssignedByName { get; set; }
     public bool IsActive { get; set; }
     public string? Note { get; set; }
     public List<InterventionDto> Interventions { get; set; } = new();

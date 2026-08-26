@@ -1,7 +1,7 @@
 ﻿@page "/interventions"
-@rendermode RenderMode.InteractiveServer
 @inject HttpClient Http
 @inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
 
 <PageTitle>Interventions - Reparo</PageTitle>
 
@@ -11,65 +11,155 @@
 {
     <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
 }
-else if (isLoading)
-{
-    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-}
 else
 {
-    <MudTable Items="@interventions" Hover="true" Striped="true" Dense="true">
-        <HeaderContent>
-            <MudTh>Assignment ID</MudTh>
-            <MudTh>Status</MudTh>
-            <MudTh>Started</MudTh>
-            <MudTh>Finished</MudTh>
-            <MudTh>Duration (min)</MudTh>
-            <MudTh>Note</MudTh>
-            <MudTh>Materials</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd>@context.WorkAssignmentId</MudTd>
-            <MudTd>
-                <MudChip T="string"
-                         Color="@GetStatusColor(context.InterventionStatusName)"
-                         Size="Size.Small">
-                    @context.InterventionStatusName
-                </MudChip>
-            </MudTd>
-            <MudTd>@(context.StartedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")</MudTd>
-            <MudTd>@(context.FinishedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")</MudTd>
-            <MudTd>@(context.DurationMinutes?.ToString() ?? "-")</MudTd>
-            <MudTd>@(context.Note ?? "-")</MudTd>
-            <MudTd>@context.Materials.Count</MudTd>
-        </RowTemplate>
-    </MudTable>
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="int?"
+                           @bind-Value="filterStatusId"
+                           Label="Status"
+                           Variant="Variant.Outlined"
+                           Clearable="true">
+                    @foreach (var s in statuses)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="int?"
+                           @bind-Value="filterTechnicianId"
+                           Label="Technician"
+                           Variant="Variant.Outlined"
+                           Clearable="true">
+                    @foreach (var t in technicians)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)t.Id)">@t.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4" Class="d-flex align-center gap-2">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="ApplyFilter">
+                    Apply
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="ResetFilter">
+                    Reset
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (filteredInterventions.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No interventions found.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@filteredInterventions"
+                  Hover="true" Striped="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Fault Report</MudTh>
+                <MudTh>Location</MudTh>
+                <MudTh>Technician</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Started</MudTh>
+                <MudTh>Finished</MudTh>
+                <MudTh>Duration (min)</MudTh>
+                <MudTh>Materials</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.FaultReportTitle</MudTd>
+                <MudTd>@context.LocationName</MudTd>
+                <MudTd>@context.TechnicianName</MudTd>
+                <MudTd>
+                    <MudChip T="string"
+                             Color="@GetStatusColor(context.InterventionStatusName)"
+                             Size="Size.Small">
+                        @context.InterventionStatusName
+                    </MudChip>
+                </MudTd>
+                <MudTd>@(context.StartedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")</MudTd>
+                <MudTd>@(context.FinishedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")</MudTd>
+                <MudTd>@(context.DurationMinutes?.ToString() ?? "-")</MudTd>
+                <MudTd>@context.MaterialCount</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                   Size="Size.Small"
+                                   OnClick="@(() => Navigation.NavigateTo(
+                                                                                              $"/fault-reports/{context.FaultReportId}"))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
 }
 
 @code {
-    private List<InterventionDto> interventions = new();
+    private List<InterventionListDto> allInterventions = new();
+    private List<InterventionListDto> filteredInterventions = new();
+    private List<LookupDto> statuses = new();
+    private List<LookupDto> technicians = new();
+    private int? filterStatusId;
+    private int? filterTechnicianId;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
         isLoading = true;
         try
         {
-            var assignments = await Http.GetFromJsonAsync<List<WorkAssignmentDto>>(
-                "api/workassignments") ?? new();
+            var t1 = Http.GetFromJsonAsync<List<InterventionListDto>>("api/interventions/list");
+            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/intervention-statuses");
+            var t3 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/technicians");
 
-            interventions = assignments
-                .SelectMany(a => a.Interventions)
-                .ToList();
+            await Task.WhenAll(t1, t2, t3);
+
+            allInterventions = t1.Result ?? new();
+            filteredInterventions = allInterventions;
+            statuses = t2.Result ?? new();
+            technicians = t3.Result ?? new();
         }
         catch { }
         finally { isLoading = false; }
     }
 
+    private void ApplyFilter()
+    {
+        filteredInterventions = allInterventions.Where(i =>
+        {
+            if (filterStatusId.HasValue &&
+                i.InterventionStatusId != filterStatusId) return false;
+            if (filterTechnicianId.HasValue &&
+                i.TechnicianId != filterTechnicianId) return false;
+            return true;
+        }).ToList();
+    }
+
+    private void ResetFilter()
+    {
+        filterStatusId = null;
+        filterTechnicianId = null;
+        filteredInterventions = allInterventions;
+    }
+
     private Color GetStatusColor(string? status) => status switch
     {
         "Completed" => Color.Success,
-        "In Progress" => Color.Warning,
         "Failed" => Color.Error,
+        "In Progress" => Color.Warning,
         _ => Color.Default
     };
 }

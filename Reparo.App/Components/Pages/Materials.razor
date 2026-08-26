@@ -1,0 +1,185 @@
+﻿@page "/materials"
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+
+<PageTitle>Materials - Reparo</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Materials</MudText>
+
+@if (!CurrentUser.HasAnyRole("Admin", "Manager"))
+{
+    <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
+}
+else
+{
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               Class="mb-4"
+               OnClick="OpenCreateForm">
+        Add Material
+    </MudButton>
+
+    @if (showForm)
+    {
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">
+                @(editingId == 0 ? "Add Material" : "Edit Material")
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.Name"
+                                  Label="Name"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6" Class="d-flex align-center">
+                    <MudCheckBox @bind-Value="form.IsActive" Label="Active" />
+                </MudItem>
+            </MudGrid>
+
+            <MudStack Row="true" Class="mt-3">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="SaveMaterial">
+                    Save
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="CloseForm">
+                    Cancel
+                </MudButton>
+            </MudStack>
+
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <MudAlert Severity="@messageSeverity" Class="mt-3">
+                    @message
+                </MudAlert>
+            }
+        </MudPaper>
+    }
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (materials.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No materials found.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@materials" Hover="true" Striped="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Name</MudTd>
+                <MudTd>
+                    <MudChip T="string"
+                             Color="@(context.IsActive ? Color.Success : Color.Default)"
+                             Size="Size.Small">
+                        @(context.IsActive ? "Active" : "Inactive")
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@(() => OpenEditForm(context))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+}
+
+@code {
+    private List<MaterialDto> materials = new();
+    private MaterialCreateDto form = new();
+    private bool isLoading = true;
+    private bool showForm = false;
+    private int editingId = 0;
+    private string? message;
+    private Severity messageSeverity = Severity.Success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            materials = await Http.GetFromJsonAsync<List<MaterialDto>>(
+                "api/materials/all") ?? new();
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+
+    private void OpenCreateForm()
+    {
+        form = new MaterialCreateDto { IsActive = true };
+        editingId = 0;
+        message = null;
+        showForm = true;
+    }
+
+    private void OpenEditForm(MaterialDto material)
+    {
+        form = new MaterialCreateDto
+        {
+            Name = material.Name,
+            IsActive = material.IsActive
+        };
+        editingId = material.Id;
+        message = null;
+        showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        showForm = false;
+        message = null;
+    }
+
+    private async Task SaveMaterial()
+    {
+        if (string.IsNullOrWhiteSpace(form.Name))
+        {
+            message = "Name is required.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            HttpResponseMessage response;
+
+            if (editingId == 0)
+                response = await Http.PostAsJsonAsync("api/materials/create", form);
+            else
+                response = await Http.PutAsJsonAsync($"api/materials/{editingId}", form);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "Material saved successfully.";
+                messageSeverity = Severity.Success;
+                showForm = false;
+                await LoadData();
+            }
+            else
+            {
+                message = $"Error: {await response.Content.ReadAsStringAsync()}";
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+    }
+}

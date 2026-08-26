@@ -162,4 +162,41 @@ public class InterventionsController : ControllerBase
 
         return Ok();
     }
+
+    [HttpGet("list")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<ActionResult<List<InterventionListDto>>> GetList()
+    {
+        var interventions = await _context.Interventions
+            .Include(i => i.WorkAssignment)
+                .ThenInclude(a => a.FaultReport)
+                    .ThenInclude(f => f.Location)
+            .Include(i => i.WorkAssignment)
+                .ThenInclude(a => a.Technician)
+            .Include(i => i.InterventionStatus)
+            .Include(i => i.Materials)
+            .OrderByDescending(i => i.CreatedAt)
+            .Select(i => new InterventionListDto
+            {
+                Id = i.Id,
+                WorkAssignmentId = i.WorkAssignmentId,
+                FaultReportId = i.WorkAssignment.FaultReportId,
+                FaultReportTitle = i.WorkAssignment.FaultReport.Title,
+                LocationName = i.WorkAssignment.FaultReport.Location.Name,
+                TechnicianId = i.WorkAssignment.TechnicianId,
+                TechnicianName = i.WorkAssignment.Technician.FirstName
+                    + " " + i.WorkAssignment.Technician.LastName,
+                InterventionStatusId = i.InterventionStatusId,
+                InterventionStatusName = i.InterventionStatus.Name,
+                StartedAt = i.StartedAt,
+                FinishedAt = i.FinishedAt,
+                DurationMinutes = i.DurationMinutes,
+                Note = i.Note,
+                MaterialCount = i.Materials.Count,
+                CreatedAt = i.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(interventions);
+    }
 }

@@ -1,5 +1,4 @@
 ﻿@page "/fault-reports/{Id:int}"
-@rendermode RenderMode.InteractiveServer
 @inject HttpClient Http
 @inject CurrentUserService CurrentUser
 @inject NavigationManager Navigation
@@ -46,11 +45,19 @@ else
                     </MudItem>
                     <MudItem xs="6">
                         <MudText Typo="Typo.caption">Priority</MudText>
-                        <MudText Typo="Typo.body2">@(report.FaultPriorityName ?? "-")</MudText>
+                        <MudChip T="string"
+                                 Color="@GetPriorityColor(report.FaultPriorityName)"
+                                 Size="Size.Small">
+                            @(report.FaultPriorityName ?? "-")
+                        </MudChip>
                     </MudItem>
                     <MudItem xs="6">
                         <MudText Typo="Typo.caption">Status</MudText>
-                        <MudText Typo="Typo.body2">@report.FaultStatusName</MudText>
+                        <MudChip T="string"
+                                 Color="@GetStatusColor(report.FaultStatusName)"
+                                 Size="Size.Small">
+                            @report.FaultStatusName
+                        </MudChip>
                     </MudItem>
                     <MudItem xs="6">
                         <MudText Typo="Typo.caption">Deadline</MudText>
@@ -72,16 +79,97 @@ else
                     </MudItem>
                 </MudGrid>
             </MudPaper>
-        </MudItem>
 
-        @if (report.FaultStatusName != "Resolved" &&
-             report.FaultStatusName != "Closed")
-        {
-            <MudPaper Class="pa-4 mb-4">
-                <MudText Typo="Typo.h6" Class="mb-3">Assign Technician</MudText>
-                // ... ostatak forme
-            </MudPaper>
-        }
+            <AttachmentUpload FaultReportId="@Id"
+                              Attachments="@attachments"
+                              OnAttachmentChanged="ReloadAttachments" />
+
+            @if (CurrentUser.HasAnyRole("Admin", "Manager") && assignmentHistory.Any())
+            {
+                <MudPaper Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Assignment History</MudText>
+
+                    @foreach (var assignment in assignmentHistory)
+                    {
+                        <MudPaper Class="pa-3 mb-3"
+                                  Outlined="true"
+                                  Style="@(assignment.IsActive
+                                                                            ? "border-color: #7c4dff;"
+                                                                            : "opacity: 0.7;")">
+                            <MudGrid>
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">
+                                        @assignment.TechnicianName
+                                        @if (assignment.IsActive)
+                                        {
+                                            <MudChip T="string"
+                                                     Color="Color.Success"
+                                                     Size="Size.Small"
+                                                     Class="ml-2">
+                                                Active
+                                            </MudChip>
+                                        }
+                                    </MudText>
+                                    <MudText Typo="Typo.caption">
+                                        Assigned: @assignment.AssignedAt.ToString("dd.MM.yyyy HH:mm")
+                                        by @assignment.AssignedByName
+                                    </MudText>
+                                    @if (!string.IsNullOrWhiteSpace(assignment.Note))
+                                    {
+                                        <MudText Typo="Typo.body2">Note: @assignment.Note</MudText>
+                                    }
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.caption">
+                                        Interventions: @assignment.Interventions.Count
+                                    </MudText>
+                                    @foreach (var intervention in assignment.Interventions)
+                                    {
+                                        <MudPaper Class="pa-2 mt-1" Outlined="true">
+                                            <MudChip T="string"
+                                                     Color="@GetInterventionStatusColor(
+                                                                                                                                      intervention.InterventionStatusName)"
+                                                     Size="Size.Small">
+                                                @intervention.InterventionStatusName
+                                            </MudChip>
+                                            @if (intervention.StartedAt.HasValue)
+                                            {
+                                                <MudText Typo="Typo.caption" Class="d-block">
+                                                    @intervention.StartedAt.Value.ToString("dd.MM.yyyy HH:mm")
+                                                    —
+                                                    @(intervention.FinishedAt?.ToString("dd.MM.yyyy HH:mm") ?? "ongoing")
+                                                </MudText>
+                                            }
+                                            @if (intervention.DurationMinutes.HasValue)
+                                            {
+                                                <MudText Typo="Typo.caption">
+                                                    Duration: @intervention.DurationMinutes min
+                                                </MudText>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(intervention.Note) &&
+                                                                                 intervention.Note != "-")
+                                            {
+                                                <MudText Typo="Typo.caption">
+                                                    @intervention.Note
+                                                </MudText>
+                                            }
+                                            @if (intervention.Materials.Any())
+                                            {
+                                                <MudText Typo="Typo.caption" Class="mt-1">
+                                                    Materials:
+                                                    @string.Join(", ", intervention.Materials.Select(
+                                                        m => $"{m.MaterialName} {m.Quantity} {m.MaterialUnitName}"))
+                                                </MudText>
+                                            }
+                                        </MudPaper>
+                                    }
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    }
+                </MudPaper>
+            }
+        </MudItem>
 
         @if (CurrentUser.HasAnyRole("Admin", "Manager"))
         {
@@ -89,25 +177,27 @@ else
                 <MudPaper Class="pa-4 mb-4">
                     <MudText Typo="Typo.h6" Class="mb-3">Review Report</MudText>
 
-                    <MudSelect @bind-Value="reviewForm.FaultTypeId"
+                    <MudSelect T="int?"
+                               @bind-Value="reviewForm.FaultTypeId"
                                Label="Fault Type"
                                Variant="Variant.Outlined"
                                Class="mb-3"
                                Clearable="true">
                         @foreach (var t in faultTypes)
                         {
-                            <MudSelectItem Value="@((int?)t.Id)">@t.Name</MudSelectItem>
+                            <MudSelectItem T="int?" Value="@((int?)t.Id)">@t.Name</MudSelectItem>
                         }
                     </MudSelect>
 
-                    <MudSelect @bind-Value="reviewForm.FaultPriorityId"
+                    <MudSelect T="int?"
+                               @bind-Value="reviewForm.FaultPriorityId"
                                Label="Priority"
                                Variant="Variant.Outlined"
                                Class="mb-3"
                                Clearable="true">
                         @foreach (var p in priorities)
                         {
-                            <MudSelectItem Value="@((int?)p.Id)">@p.Name</MudSelectItem>
+                            <MudSelectItem T="int?" Value="@((int?)p.Id)">@p.Name</MudSelectItem>
                         }
                     </MudSelect>
 
@@ -123,38 +213,54 @@ else
                                Class="mb-3">
                         Save Review
                     </MudButton>
+
+                    @if (!string.IsNullOrWhiteSpace(message))
+                    {
+                        <MudAlert Severity="@messageSeverity" Class="mb-3">
+                            @message
+                        </MudAlert>
+                    }
                 </MudPaper>
 
-                <MudPaper Class="pa-4 mb-4">
-                    <MudText Typo="Typo.h6" Class="mb-3">Assign Technician</MudText>
+                @if (report.FaultStatusName != "Resolved" &&
+                                     report.FaultStatusName != "Closed")
+                {
+                    <MudPaper Class="pa-4 mb-4">
+                        <MudText Typo="Typo.h6" Class="mb-3">Assign Technician</MudText>
 
-                    <MudSelect @bind-Value="assignTechnicianId"
-                               Label="Technician"
-                               Variant="Variant.Outlined"
-                               Class="mb-3">
-                        @foreach (var t in technicians)
-                        {
-                            <MudSelectItem Value="@t.Id">@t.Name</MudSelectItem>
-                        }
-                    </MudSelect>
+                        <MudSelect T="int"
+                                   @bind-Value="assignTechnicianId"
+                                   Label="Technician"
+                                   Variant="Variant.Outlined"
+                                   Class="mb-3">
+                            @foreach (var t in technicians)
+                            {
+                                <MudSelectItem T="int" Value="@t.Id">@t.Name</MudSelectItem>
+                            }
+                        </MudSelect>
 
-                    <MudTextField @bind-Value="assignNote"
-                                  Label="Note"
-                                  Variant="Variant.Outlined"
-                                  Class="mb-3" />
+                        <MudTextField @bind-Value="assignNote"
+                                      Label="Note"
+                                      Variant="Variant.Outlined"
+                                      Class="mb-3" />
 
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Secondary"
-                               FullWidth="true"
-                               OnClick="AssignTechnician">
-                        Assign
-                    </MudButton>
-                </MudPaper>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Secondary"
+                                   FullWidth="true"
+                                   OnClick="AssignTechnician">
+                            Assign
+                        </MudButton>
+                    </MudPaper>
+                }
 
                 @if (report.FaultStatusName == "Resolved")
                 {
                     <MudPaper Class="pa-4">
                         <MudText Typo="Typo.h6" Class="mb-3">Close Report</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-3">
+                            Intervention has been completed successfully.
+                            You can now close this report.
+                        </MudText>
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Success"
                                    FullWidth="true"
@@ -166,17 +272,13 @@ else
             </MudItem>
         }
     </MudGrid>
-
-    @if (!string.IsNullOrWhiteSpace(message))
-    {
-        <MudAlert Severity="@messageSeverity" Class="mt-4">@message</MudAlert>
-    }
 }
 
 @code {
     [Parameter] public int Id { get; set; }
 
     private FaultReportDto? report;
+    private List<AttachmentDto> attachments = new();
     private List<LookupDto> faultTypes = new();
     private List<LookupDto> priorities = new();
     private List<LookupDto> technicians = new();
@@ -187,6 +289,7 @@ else
     private bool isLoading = true;
     private string? message;
     private Severity messageSeverity = Severity.Success;
+    private List<WorkAssignmentDto> assignmentHistory = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -198,15 +301,20 @@ else
         isLoading = true;
         try
         {
-            report = await Http.GetFromJsonAsync<FaultReportDto>(
-                $"api/faultreports/{Id}");
+            var t1 = Http.GetFromJsonAsync<FaultReportDto>($"api/faultreports/{Id}");
+            var t2 = Http.GetFromJsonAsync<List<AttachmentDto>>(
+                $"api/attachments/fault-report/{Id}");
+            var t3 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/fault-types");
+            var t4 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/fault-priorities");
+            var t5 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/technicians");
 
-            faultTypes = await Http.GetFromJsonAsync<List<LookupDto>>(
-                "api/lookups/fault-types") ?? new();
-            priorities = await Http.GetFromJsonAsync<List<LookupDto>>(
-                "api/lookups/fault-priorities") ?? new();
-            technicians = await Http.GetFromJsonAsync<List<LookupDto>>(
-                "api/lookups/technicians") ?? new();
+            await Task.WhenAll(t1, t2, t3, t4, t5);
+
+            report = t1.Result;
+            attachments = t2.Result ?? new();
+            faultTypes = t3.Result ?? new();
+            priorities = t4.Result ?? new();
+            technicians = t5.Result ?? new();
 
             if (report is not null)
             {
@@ -214,10 +322,34 @@ else
                 reviewForm.FaultPriorityId = report.FaultPriorityId;
                 deadline = report.Deadline;
             }
+
+            if (CurrentUser.HasAnyRole("Admin", "Manager"))
+            {
+                try
+                {
+                    assignmentHistory = await Http.GetFromJsonAsync<List<WorkAssignmentDto>>(
+                        $"api/workassignments/fault-report/{Id}") ?? new();
+                }
+                catch { }
+            }
         }
         catch { }
         finally { isLoading = false; }
     }
+
+    private async Task ReloadAttachments()
+    {
+        attachments = await Http.GetFromJsonAsync<List<AttachmentDto>>(
+            $"api/attachments/fault-report/{Id}") ?? new();
+    }
+
+    private Color GetInterventionStatusColor(string? status) => status switch
+    {
+        "Completed" => Color.Success,
+        "Failed" => Color.Error,
+        "In Progress" => Color.Warning,
+        _ => Color.Default
+    };
 
     private async Task SaveReview()
     {
@@ -253,8 +385,7 @@ else
                 Note = assignNote
             };
 
-            var response = await Http.PostAsJsonAsync(
-                "api/workassignments", dto);
+            var response = await Http.PostAsJsonAsync("api/workassignments", dto);
 
             if (response.IsSuccessStatusCode)
             {
@@ -292,4 +423,20 @@ else
         }
         catch { }
     }
+
+    private Color GetPriorityColor(string? priority) => priority switch
+    {
+        "Critical" => Color.Error,
+        "High" => Color.Warning,
+        "Medium" => Color.Info,
+        _ => Color.Default
+    };
+
+    private Color GetStatusColor(string? status) => status switch
+    {
+        "Closed" => Color.Success,
+        "Resolved" => Color.Info,
+        "In Progress" => Color.Warning,
+        _ => Color.Default
+    };
 }

@@ -9,4 +9,5 @@ public class AttachmentDto
     public string OriginalFileName { get; set; } = string.Empty;
     public string ContentType { get; set; } = string.Empty;
     public DateTime UploadedAt { get; set; }
+    public string Url { get; set; } = string.Empty;
 }

@@ -23,8 +23,9 @@ public class DashboardController : ControllerBase
     public async Task<ActionResult<DashboardDto>> Get()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var isReporter = User.IsInRole("Reporter") && !User.IsInRole("Admin") && !User.IsInRole("Manager");
+
 
         var now = DateTime.UtcNow;
 
@@ -65,12 +66,20 @@ public class DashboardController : ControllerBase
             avgResolution = days.Count > 0 ? days.Average() : 0;
         }
 
-        var lastFive = await _context.FaultReports
+        var lastFiveQuery = _context.FaultReports
             .Include(f => f.Location)
             .Include(f => f.FaultType)
             .Include(f => f.FaultPriority)
             .Include(f => f.FaultStatus)
-            .Where(f => !f.IsDeleted)
+            .Include(f => f.Assignments.Where(a => a.IsActive))
+                .ThenInclude(a => a.Technician)
+            .Where(f => !f.IsDeleted);
+
+        if (isReporter && user?.EmployeeId is not null)
+            lastFiveQuery = lastFiveQuery.Where(f =>
+                f.ReportedByEmployeeId == user.EmployeeId);
+
+        var lastFive = await lastFiveQuery
             .OrderByDescending(f => f.CreatedAt)
             .Take(5)
             .Select(f => new FaultReportDto
@@ -81,7 +90,11 @@ public class DashboardController : ControllerBase
                 FaultTypeName = f.FaultType != null ? f.FaultType.Name : null,
                 FaultPriorityName = f.FaultPriority != null ? f.FaultPriority.Name : null,
                 FaultStatusName = f.FaultStatus.Name,
-                CreatedAt = f.CreatedAt
+                CreatedAt = f.CreatedAt,
+                ActiveTechnicianName = f.Assignments
+                    .Where(a => a.IsActive)
+                    .Select(a => a.Technician.FirstName + " " + a.Technician.LastName)
+                    .FirstOrDefault()
             })
             .ToListAsync();
 

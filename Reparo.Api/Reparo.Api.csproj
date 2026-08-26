@@ -18,4 +18,8 @@
 		<ProjectReference Include="..\Reparo.Shared\Reparo.Shared.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="wwwroot\uploads\" />
+	</ItemGroup>
+
 </Project>

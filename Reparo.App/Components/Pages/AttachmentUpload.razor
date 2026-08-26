@@ -1,0 +1,253 @@
+﻿@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+
+@if (CanUpload)
+{
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Attachments</MudText>
+
+        @if (Attachments.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mb-3" Style="color: grey;">
+                No attachments yet.
+            </MudText>
+        }
+        else
+        {
+            @foreach (var group in Attachments.GroupBy(a => a.Purpose))
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-2">@group.Key</MudText>
+                <MudGrid Class="mb-3">
+                    @foreach (var att in group)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudPaper Class="pa-2" Outlined="true">
+                                @if (att.ContentType.StartsWith("image/"))
+                                {
+                                    <img src="@($"https://localhost:7182{att.Url}")"
+                                         alt="@att.OriginalFileName"
+                                         style="width:100%; height:150px; object-fit:cover; border-radius:4px;" />
+                                }
+                                else
+                                {
+                                    <div style="height:150px; display:flex; align-items:center; justify-content:center; background:#f5f5f5; border-radius:4px;">
+                                        <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf"
+                                                 Size="Size.Large"
+                                                 Color="Color.Error" />
+                                    </div>
+                                }
+                                <MudText Typo="Typo.caption" Class="mt-1 d-block">
+                                    @att.OriginalFileName
+                                </MudText>
+                                <MudText Typo="Typo.caption" Class="d-block"
+                                         Style="color:grey;">
+                                    @att.UploadedAt.ToString("dd.MM.yyyy HH:mm")
+                                </MudText>
+                                <MudStack Row="true" Class="mt-2">
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Outlined"
+                                               StartIcon="@Icons.Material.Filled.Visibility"
+                                               Href="@($"https://localhost:7182{att.Url}")"
+                                               Target="_blank">
+                                        View
+                                    </MudButton>
+                                    @if (CurrentUser.HasAnyRole("Admin", "Manager"))
+                                    {
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Outlined"
+                                                   Color="Color.Error"
+                                                   StartIcon="@Icons.Material.Filled.Delete"
+                                                   OnClick="@(() => DeleteAttachment(att.Id))">
+                                            Delete
+                                        </MudButton>
+                                    }
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        }
+
+        <MudDivider Class="mb-3" />
+        <MudText Typo="Typo.subtitle2" Class="mb-3">
+            @(string.IsNullOrWhiteSpace(FixedPurpose)
+                ? "Upload Attachment"
+                : $"Upload {FixedPurpose}")
+        </MudText>
+
+        <MudGrid AlignItems="AlignItems.Center">
+            @if (string.IsNullOrWhiteSpace(FixedPurpose))
+            {
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="string"
+                               @bind-Value="uploadPurpose"
+                               Label="Purpose"
+                               Variant="Variant.Outlined"
+                               Dense="true">
+                        @foreach (var p in AvailablePurposes)
+                        {
+                            <MudSelectItem T="string" Value="@p">@p</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            }
+            <MudItem xs="12" sm="@(string.IsNullOrWhiteSpace(FixedPurpose) ? 8 : 12)">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <InputFile id="@($"upload_{FaultReportId}_{FixedPurpose}")"
+                               OnChange="HandleFileSelected"
+                               accept="image/jpeg,image/png,image/webp,application/pdf"
+                               style="display:none;" />
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.AttachFile"
+                               Size="Size.Small">
+                        <label for="@($"upload_{FaultReportId}_{FixedPurpose}")"
+                               style="cursor:pointer; margin:0;">
+                            Choose File
+                        </label>
+                    </MudButton>
+
+                    @if (selectedFile is not null)
+                    {
+                        <MudText Typo="Typo.body2">
+                            @selectedFile.Name
+                            (@($"{selectedFile.Size / 1024:N0} KB"))
+                        </MudText>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   Disabled="isUploading"
+                                   OnClick="UploadFile">
+                            @(isUploading ? "Uploading..." : "Upload")
+                        </MudButton>
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   OnClick="@(() => selectedFile = null)">
+                            Clear
+                        </MudButton>
+                    }
+                </MudStack>
+            </MudItem>
+        </MudGrid>
+
+        @if (!string.IsNullOrWhiteSpace(uploadMessage))
+        {
+            <MudAlert Severity="@uploadSeverity" Class="mt-3"
+                      ShowCloseIcon="true"
+                      CloseIconClicked="@(() => uploadMessage = null)">
+                @uploadMessage
+            </MudAlert>
+        }
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public int FaultReportId { get; set; }
+    [Parameter] public List<AttachmentDto> Attachments { get; set; } = new();
+    [Parameter] public EventCallback OnAttachmentChanged { get; set; }
+
+    // Ako je postavljen, dropdown se ne prikazuje i koristi se fiksna namjena
+    [Parameter] public string? FixedPurpose { get; set; }
+
+    private IBrowserFile? selectedFile;
+    private string uploadPurpose = string.Empty;
+    private bool isUploading = false;
+    private string? uploadMessage;
+    private Severity uploadSeverity = Severity.Success;
+
+    private bool CanUpload =>
+        CurrentUser.HasAnyRole("Admin", "Reporter", "Technician");
+
+    private List<string> AvailablePurposes
+    {
+        get
+        {
+            var purposes = new List<string>();
+            if (CurrentUser.HasAnyRole("Admin", "Reporter"))
+                purposes.Add("Photo Before Work");
+            if (CurrentUser.HasAnyRole("Admin", "Technician"))
+            {
+                purposes.Add("Photo After Work");
+                purposes.Add("Document");
+            }
+            return purposes;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(FixedPurpose))
+            uploadPurpose = FixedPurpose;
+        else if (CurrentUser.HasRole("Technician") && !CurrentUser.HasRole("Admin"))
+            uploadPurpose = "Photo After Work";
+        else
+            uploadPurpose = "Photo Before Work";
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+
+    private async Task UploadFile()
+    {
+        if (selectedFile is null) return;
+
+        var purpose = string.IsNullOrWhiteSpace(FixedPurpose)
+            ? uploadPurpose
+            : FixedPurpose;
+
+        if (string.IsNullOrWhiteSpace(purpose)) return;
+
+        isUploading = true;
+        uploadMessage = null;
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(
+                selectedFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
+            fileContent.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue(selectedFile.ContentType);
+
+            content.Add(new StringContent(FaultReportId.ToString()), "faultReportId");
+            content.Add(new StringContent(purpose), "purpose");
+            content.Add(fileContent, "file", selectedFile.Name);
+
+            var response = await Http.PostAsync("api/attachments", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                uploadMessage = "File uploaded successfully.";
+                uploadSeverity = Severity.Success;
+                selectedFile = null;
+                await OnAttachmentChanged.InvokeAsync();
+            }
+            else
+            {
+                uploadMessage = await response.Content.ReadAsStringAsync();
+                uploadSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadMessage = $"Error: {ex.Message}";
+            uploadSeverity = Severity.Error;
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+
+    private async Task DeleteAttachment(int attachmentId)
+    {
+        try
+        {
+            var response = await Http.DeleteAsync($"api/attachments/{attachmentId}");
+            if (response.IsSuccessStatusCode)
+                await OnAttachmentChanged.InvokeAsync();
+        }
+        catch { }
+    }
+}

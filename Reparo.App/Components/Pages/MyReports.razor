@@ -15,7 +15,8 @@ else
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
                Class="mb-4"
-               OnClick="OpenCreateForm">
+               OnClick="OpenCreateForm"
+               Disabled="showForm">
         New Report
     </MudButton>
 
@@ -47,16 +48,32 @@ else
                                   Variant="Variant.Outlined"
                                   Lines="3" />
                 </MudItem>
+                <MudItem xs="12">
+                    <MudDivider Class="mb-3" />
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">
+                        Photo Before Work (optional)
+                    </MudText>
+                    <InputFile OnChange="HandleFileSelected"
+                               accept="image/jpeg,image/png,image/webp,application/pdf" />
+                    @if (selectedFile is not null)
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-2">
+                            Selected: @selectedFile.Name
+                            (@($"{selectedFile.Size / 1024:N0} KB"))
+                        </MudText>
+                    }
+                </MudItem>
             </MudGrid>
 
-            <MudStack Row="true" Class="mt-3">
+            <MudStack Row="true" Class="mt-4">
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
-                           OnClick="SaveReport">
-                    Submit
+                           OnClick="SaveReport"
+                           Disabled="isSaving">
+                    @(isSaving ? "Submitting..." : "Submit")
                 </MudButton>
                 <MudButton Variant="Variant.Outlined"
-                           OnClick="@(() => showForm = false)">
+                           OnClick="@(() => { showForm = false; selectedFile = null; })">
                     Cancel
                 </MudButton>
             </MudStack>
@@ -113,8 +130,10 @@ else
     private List<FaultReportDto> reports = new();
     private List<LookupDto> locations = new();
     private FaultReportCreateDto form = new();
+    private IBrowserFile? selectedFile;
     private bool isLoading = true;
     private bool showForm = false;
+    private bool isSaving = false;
     private string? message;
     private Severity messageSeverity = Severity.Success;
 
@@ -128,13 +147,14 @@ else
         isLoading = true;
         try
         {
-            var t1 = Http.GetFromJsonAsync<List<FaultReportDto>>("api/faultreports/mine");
-            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/locations/lookup");
-
-            await Task.WhenAll(t1, t2);
-
-            reports = t1.Result ?? new();
-            locations = t2.Result ?? new();
+            locations = await Http.GetFromJsonAsync<List<LookupDto>>(
+                "api/locations/lookup") ?? new();
+            try
+            {
+                reports = await Http.GetFromJsonAsync<List<FaultReportDto>>(
+                    "api/faultreports/mine") ?? new();
+            }
+            catch { }
         }
         catch { }
         finally { isLoading = false; }
@@ -143,12 +163,18 @@ else
     private void OpenCreateForm()
     {
         form = new FaultReportCreateDto();
+        selectedFile = null;
 
         if (CurrentUser.User?.EmployeeId is not null)
             form.ReportedByEmployeeId = CurrentUser.User.EmployeeId.Value;
 
         message = null;
         showForm = true;
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
     }
 
     private async Task SaveReport()
@@ -169,32 +195,57 @@ else
 
         if (form.ReportedByEmployeeId == 0)
         {
-            message = "Your account is not linked to an employee. Please contact admin.";
+            message = "Your account is not linked to an employee.";
             messageSeverity = Severity.Error;
             return;
         }
 
+        isSaving = true;
+
         try
         {
+            // Korak 1 - kreiraj prijavu
             var response = await Http.PostAsJsonAsync("api/faultreports", form);
 
-            if (response.IsSuccessStatusCode)
-            {
-                message = "Report submitted successfully.";
-                messageSeverity = Severity.Success;
-                showForm = false;
-                await LoadData();
-            }
-            else
+            if (!response.IsSuccessStatusCode)
             {
                 message = $"Error: {await response.Content.ReadAsStringAsync()}";
                 messageSeverity = Severity.Error;
+                return;
             }
+
+            var created = await response.Content.ReadFromJsonAsync<FaultReportDto>();
+
+            // Korak 2 - uploadi sliku ako je odabrana
+            if (selectedFile is not null && created?.Id is not null)
+            {
+                using var content = new MultipartFormDataContent();
+                var fileContent = new StreamContent(
+                    selectedFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
+                fileContent.Headers.ContentType =
+                    new System.Net.Http.Headers.MediaTypeHeaderValue(
+                        selectedFile.ContentType);
+
+                content.Add(new StringContent(created.Id.ToString()), "faultReportId");
+                content.Add(new StringContent("Photo Before Work"), "purpose");
+                content.Add(fileContent, "file", selectedFile.Name);
+
+                await Http.PostAsync("api/attachments", content);
+            }
+
+            showForm = false;
+            selectedFile = null;
+            message = null;
+            await LoadData();
         }
         catch (Exception ex)
         {
             message = $"Error: {ex.Message}";
             messageSeverity = Severity.Error;
+        }
+        finally
+        {
+            isSaving = false;
         }
     }
 

@@ -243,13 +243,15 @@ public class FaultReportsController : ControllerBase
             .FirstOrDefaultAsync(u => u.Id == userId);
 
         if (user?.EmployeeId is null)
-            return BadRequest("User is not associated with an employee.");
+            return BadRequest("Korisnik nije povezan s djelatnikom.");
 
         var reports = await _context.FaultReports
             .Include(f => f.Location)
             .Include(f => f.FaultType)
             .Include(f => f.FaultPriority)
             .Include(f => f.FaultStatus)
+            .Include(f => f.Assignments.Where(a => a.IsActive))
+                .ThenInclude(a => a.Technician)
             .Where(f => f.ReportedByEmployeeId == user.EmployeeId && !f.IsDeleted)
             .Select(f => new FaultReportDto
             {
@@ -263,7 +265,11 @@ public class FaultReportsController : ControllerBase
                 FaultStatusId = f.FaultStatusId,
                 FaultStatusName = f.FaultStatus.Name,
                 Deadline = f.Deadline,
-                CreatedAt = f.CreatedAt
+                CreatedAt = f.CreatedAt,
+                ActiveTechnicianName = f.Assignments
+                    .Where(a => a.IsActive)
+                    .Select(a => a.Technician.FirstName + " " + a.Technician.LastName)
+                    .FirstOrDefault()
             })
             .ToListAsync();
 

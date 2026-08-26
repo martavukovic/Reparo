@@ -1,5 +1,18 @@
 ﻿namespace Reparo.Shared.DTOs;
 
+public class MaterialDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+}
+
+public class MaterialCreateDto
+{
+    public string Name { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+}
+
 public class InterventionMaterialDto
 {
     public int Id { get; set; }

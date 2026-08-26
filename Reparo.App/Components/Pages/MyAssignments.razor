@@ -80,14 +80,32 @@ else
                 @{
                     var plannedIntervention = assignment.Interventions
                         .FirstOrDefault(i => i.InterventionStatusName == "Planned");
+                    var failedInterventions = assignment.Interventions
+                        .Where(i => i.InterventionStatusName == "Failed")
+                        .ToList();
+                }
+
+                @if (failedInterventions.Any())
+                {
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color: red;">
+                        Failed Interventions (@failedInterventions.Count)
+                    </MudText>
+                    @foreach (var fi in failedInterventions)
+                    {
+                        <MudPaper Class="pa-2 mb-1" Outlined="true">
+                            <MudText Typo="Typo.body2">
+                                @fi.CreatedAt.ToString("dd.MM.yyyy") —
+                                @(fi.Note ?? "-")
+                            </MudText>
+                        </MudPaper>
+                    }
                 }
 
                 @if (plannedIntervention is not null)
                 {
                     <MudDivider Class="my-3" />
-                    <MudText Typo="Typo.subtitle1" Class="mb-2">
-                        Active Intervention
-                    </MudText>
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">Active Intervention</MudText>
 
                     <MudPaper Class="pa-3" Outlined="true">
 
@@ -165,6 +183,13 @@ else
                             </MudButton>
                         }
 
+                        <MudDivider Class="my-3" />
+
+                        <AttachmentUpload FaultReportId="@assignment.FaultReportId"
+                                          Attachments="@GetAttachments(assignment.FaultReportId)"
+                                          FixedPurpose="Photo After Work"
+                                          OnAttachmentChanged="LoadData" />
+
                         <MudDivider Class="my-2" />
                         <MudText Typo="Typo.subtitle2" Class="mb-2">
                             Finish Intervention
@@ -172,6 +197,12 @@ else
 
                         @if (activeFinishInterventionId == plannedIntervention.Id)
                         {
+                            @if (!string.IsNullOrWhiteSpace(finishError))
+                            {
+                                <MudAlert Severity="Severity.Error" Class="mb-3">
+                                    @finishError
+                                </MudAlert>
+                            }
                             <MudGrid>
                                 <MudItem xs="12" sm="3">
                                     <MudDatePicker @bind-Date="startDate"
@@ -195,7 +226,7 @@ else
                                 </MudItem>
                                 <MudItem xs="12">
                                     <MudTextField @bind-Value="finishNote"
-                                                  Label="Note"
+                                                  Label="Note (optional)"
                                                   Variant="Variant.Outlined"
                                                   Lines="2" />
                                 </MudItem>
@@ -214,8 +245,10 @@ else
                                             Mark as Failed
                                         </MudButton>
                                         <MudButton Variant="Variant.Text"
-                                                   OnClick="@(() =>
-                                                       activeFinishInterventionId = 0)">
+                                                   OnClick="@(() => {
+                                                       activeFinishInterventionId = 0;
+                                                       finishError = null;
+                                                   })">
                                             Cancel
                                         </MudButton>
                                     </MudStack>
@@ -232,34 +265,12 @@ else
                                            startDate = DateTime.Today;
                                            endDate = DateTime.Today;
                                            finishNote = string.Empty;
+                                           finishError = null;
                                        })">
                                 Finish Intervention
                             </MudButton>
                         }
                     </MudPaper>
-                }
-
-                @{
-                    var failedInterventions = assignment.Interventions
-                        .Where(i => i.InterventionStatusName == "Failed")
-                        .ToList();
-                }
-
-                @if (failedInterventions.Any())
-                {
-                    <MudDivider Class="my-3" />
-                    <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color: red;">
-                        Failed Interventions (@failedInterventions.Count)
-                    </MudText>
-                    @foreach (var fi in failedInterventions)
-                    {
-                        <MudPaper Class="pa-2 mb-1" Outlined="true">
-                            <MudText Typo="Typo.body2">
-                                @fi.CreatedAt.ToString("dd.MM.yyyy") —
-                                @(fi.Note ?? "No note")
-                            </MudText>
-                        </MudPaper>
-                    }
                 }
             </MudPaper>
         }
@@ -287,13 +298,12 @@ else
                     @assignment.FaultStatusName —
                     @assignment.AssignedAt.ToString("dd.MM.yyyy")
                 </MudText>
-
                 @foreach (var intervention in assignment.Interventions
                     .Where(i => i.InterventionStatusName == "Completed"))
                 {
                     <MudText Typo="Typo.body2" Class="mt-1">
                         ✓ Completed: @intervention.FinishedAt?.ToString("dd.MM.yyyy HH:mm")
-                        — @intervention.Note
+                        — @(intervention.Note ?? "-")
                     </MudText>
                     @foreach (var mat in intervention.Materials)
                     {
@@ -320,16 +330,17 @@ else
 @code {
     private List<WorkAssignmentDto> assignments = new();
     private List<LookupDto> materialUnits = new();
+    private Dictionary<int, List<AttachmentDto>> attachmentsByReport = new();
 
-private IEnumerable<WorkAssignmentDto> activeAssignments =>
-    assignments.Where(a => a.IsActive &&
-        a.FaultStatusName != "Resolved" &&
-        a.FaultStatusName != "Closed");
+    private IEnumerable<WorkAssignmentDto> activeAssignments =>
+        assignments.Where(a => a.IsActive &&
+            a.FaultStatusName != "Resolved" &&
+            a.FaultStatusName != "Closed");
 
-private IEnumerable<WorkAssignmentDto> completedAssignments =>
-    assignments.Where(a => !a.IsActive ||
-        a.FaultStatusName == "Resolved" ||
-        a.FaultStatusName == "Closed");
+    private IEnumerable<WorkAssignmentDto> completedAssignments =>
+        assignments.Where(a => !a.IsActive ||
+            a.FaultStatusName == "Resolved" ||
+            a.FaultStatusName == "Closed");
 
     private int activeMaterialInterventionId = 0;
     private string materialName = string.Empty;
@@ -342,10 +353,16 @@ private IEnumerable<WorkAssignmentDto> completedAssignments =>
     private DateTime? endDate;
     private TimeSpan? endTime;
     private string finishNote = string.Empty;
+    private string? finishError;
 
     private bool isLoading = true;
     private string? message;
     private Severity messageSeverity = Severity.Success;
+
+    private List<AttachmentDto> GetAttachments(int faultReportId)
+    {
+        return attachmentsByReport.TryGetValue(faultReportId, out var list) ? list : new();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -365,6 +382,18 @@ private IEnumerable<WorkAssignmentDto> completedAssignments =>
 
             assignments = t1.Result ?? new();
             materialUnits = t2.Result ?? new();
+
+            attachmentsByReport.Clear();
+            foreach (var assignment in assignments)
+            {
+                try
+                {
+                    var atts = await Http.GetFromJsonAsync<List<AttachmentDto>>(
+                        $"api/attachments/fault-report/{assignment.FaultReportId}") ?? new();
+                    attachmentsByReport[assignment.FaultReportId] = atts;
+                }
+                catch { }
+            }
         }
         catch { }
         finally { isLoading = false; }
@@ -486,18 +515,12 @@ private IEnumerable<WorkAssignmentDto> completedAssignments =>
 
     private async Task FinishIntervention(int interventionId, bool successful)
     {
+        finishError = null;
+
         if (!startDate.HasValue || !startTime.HasValue ||
             !endDate.HasValue || !endTime.HasValue)
         {
-            message = "Please enter start and end date/time.";
-            messageSeverity = Severity.Error;
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(finishNote))
-        {
-            message = "Note is required.";
-            messageSeverity = Severity.Error;
+            finishError = "Please enter start and end date/time.";
             return;
         }
 
@@ -508,7 +531,7 @@ private IEnumerable<WorkAssignmentDto> completedAssignments =>
                 Id = interventionId,
                 StartedAt = startDate.Value.Date + startTime.Value,
                 FinishedAt = endDate.Value.Date + endTime.Value,
-                Note = finishNote,
+                Note = string.IsNullOrWhiteSpace(finishNote) ? "-" : finishNote,
                 IsSuccessful = successful
             };
 
@@ -527,18 +550,17 @@ private IEnumerable<WorkAssignmentDto> completedAssignments =>
                 endDate = null;
                 endTime = null;
                 finishNote = string.Empty;
+                finishError = null;
                 await LoadData();
             }
             else
             {
-                message = await response.Content.ReadAsStringAsync();
-                messageSeverity = Severity.Error;
+                finishError = await response.Content.ReadAsStringAsync();
             }
         }
         catch (Exception ex)
         {
-            message = $"Error: {ex.Message}";
-            messageSeverity = Severity.Error;
+            finishError = $"Error: {ex.Message}";
         }
     }
 
@@ -554,14 +576,6 @@ private IEnumerable<WorkAssignmentDto> completedAssignments =>
     {
         "Closed" => Color.Success,
         "Resolved" => Color.Info,
-        "In Progress" => Color.Warning,
-        _ => Color.Default
-    };
-
-    private Color GetInterventionStatusColor(string? status) => status switch
-    {
-        "Completed" => Color.Success,
-        "Failed" => Color.Error,
         "In Progress" => Color.Warning,
         _ => Color.Default
     };

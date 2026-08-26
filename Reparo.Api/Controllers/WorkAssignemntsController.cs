@@ -259,4 +259,74 @@ public class WorkAssignmentsController : ControllerBase
 
         return Ok(assignments);
     }
+
+    [HttpGet("fault-report/{faultReportId}")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<ActionResult<List<WorkAssignmentDto>>> GetByFaultReport(int faultReportId)
+    {
+        var assignments = await _context.WorkAssignments
+            .Include(a => a.Technician)
+            .Include(a => a.FaultReport)
+                .ThenInclude(f => f.Location)
+            .Include(a => a.FaultReport)
+                .ThenInclude(f => f.FaultType)
+            .Include(a => a.FaultReport)
+                .ThenInclude(f => f.FaultPriority)
+            .Include(a => a.FaultReport)
+                .ThenInclude(f => f.FaultStatus)
+            .Include(a => a.Interventions)
+                .ThenInclude(i => i.InterventionStatus)
+            .Include(a => a.Interventions)
+                .ThenInclude(i => i.Materials)
+                    .ThenInclude(m => m.Material)
+            .Include(a => a.Interventions)
+                .ThenInclude(i => i.Materials)
+                    .ThenInclude(m => m.MaterialUnit)
+            .Where(a => a.FaultReportId == faultReportId)
+            .OrderByDescending(a => a.AssignedAt)
+            .ToListAsync();
+
+        var userIds = assignments.Select(a => a.AssignedByUserId).Distinct().ToList();
+        var users = await _context.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.UserName ?? u.Email ?? u.Id);
+
+        return Ok(assignments.Select(a => new WorkAssignmentDto
+        {
+            Id = a.Id,
+            FaultReportId = a.FaultReportId,
+            FaultReportTitle = a.FaultReport.Title,
+            LocationName = a.FaultReport.Location.Name,
+            FaultTypeName = a.FaultReport.FaultType?.Name ?? "",
+            FaultPriorityName = a.FaultReport.FaultPriority?.Name ?? "",
+            FaultStatusName = a.FaultReport.FaultStatus.Name,
+            TechnicianId = a.TechnicianId,
+            TechnicianName = a.Technician.FirstName + " " + a.Technician.LastName,
+            AssignedAt = a.AssignedAt,
+            AssignedByName = users.TryGetValue(a.AssignedByUserId, out var name) ? name : "-",
+            IsActive = a.IsActive,
+            Note = a.Note,
+            Interventions = a.Interventions.Select(i => new InterventionDto
+            {
+                Id = i.Id,
+                WorkAssignmentId = i.WorkAssignmentId,
+                InterventionStatusId = i.InterventionStatusId,
+                InterventionStatusName = i.InterventionStatus.Name,
+                StartedAt = i.StartedAt,
+                FinishedAt = i.FinishedAt,
+                DurationMinutes = i.DurationMinutes,
+                Note = i.Note,
+                CreatedAt = i.CreatedAt,
+                Materials = i.Materials.Select(m => new InterventionMaterialDto
+                {
+                    Id = m.Id,
+                    MaterialId = m.MaterialId,
+                    MaterialName = m.Material.Name,
+                    Quantity = m.Quantity,
+                    MaterialUnitId = m.MaterialUnitId,
+                    MaterialUnitName = m.MaterialUnit.Name
+                }).ToList()
+            }).ToList()
+        }).ToList());
+    }
 }

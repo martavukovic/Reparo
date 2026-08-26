@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Reparo.Api.Data;
 using Reparo.Shared.DTOs;
 using Reparo.Shared.Models;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Reparo.Api.Controllers;
 
@@ -36,7 +35,8 @@ public class AttachmentsController : ControllerBase
                 Purpose = a.Purpose,
                 OriginalFileName = a.OriginalFileName,
                 ContentType = a.ContentType,
-                UploadedAt = a.UploadedAt
+                UploadedAt = a.UploadedAt,
+                Url = $"/uploads/{a.StoredFileName}"
             })
             .ToListAsync();
 
@@ -44,39 +44,37 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpPost]
-    [Consumes("multipart/form-data")]
     public async Task<ActionResult<AttachmentDto>> Upload(
         [FromForm] int faultReportId,
         [FromForm] int? interventionId,
         [FromForm] string purpose,
         IFormFile file)
     {
-        // Provjera vrste datoteke
         var allowedTypes = new[]
         {
             "image/jpeg", "image/png", "image/webp", "application/pdf"
         };
 
         if (!allowedTypes.Contains(file.ContentType))
-            return BadRequest("Dopuštene vrste: JPEG, PNG, WEBP, PDF.");
+            return BadRequest("Allowed types: JPEG, PNG, WEBP, PDF.");
 
-        // Provjera veličine (max 10 MB)
         if (file.Length > 10 * 1024 * 1024)
-            return BadRequest("Datoteka ne smije biti veća od 10 MB.");
+            return BadRequest("File size cannot exceed 10 MB.");
 
-        // Provjera namjene
         var allowedPurposes = new[]
         {
-            "Fotografija prije rada",
-            "Fotografija nakon rada",
-            "Dokument"
+            "Photo Before Work",
+            "Photo After Work",
+            "Document"
         };
 
         if (!allowedPurposes.Contains(purpose))
-            return BadRequest("Neispravna namjena privitka.");
+            return BadRequest("Invalid attachment purpose.");
 
-        // Spremi datoteku
-        var uploadsFolder = Path.Combine(_env.WebRootPath ?? "wwwroot", "uploads");
+        var uploadsFolder = Path.Combine(
+            _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+            "uploads");
+
         Directory.CreateDirectory(uploadsFolder);
 
         var extension = Path.GetExtension(file.FileName);
@@ -113,7 +111,8 @@ public class AttachmentsController : ControllerBase
             Purpose = attachment.Purpose,
             OriginalFileName = attachment.OriginalFileName,
             ContentType = attachment.ContentType,
-            UploadedAt = attachment.UploadedAt
+            UploadedAt = attachment.UploadedAt,
+            Url = $"/uploads/{storedFileName}"
         });
     }
 
@@ -125,8 +124,10 @@ public class AttachmentsController : ControllerBase
         if (attachment is null)
             return NotFound();
 
-        // Obriši fizičku datoteku
-        var uploadsFolder = Path.Combine(_env.WebRootPath ?? "wwwroot", "uploads");
+        var uploadsFolder = Path.Combine(
+            _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+            "uploads");
+
         var filePath = Path.Combine(uploadsFolder, attachment.StoredFileName);
 
         if (System.IO.File.Exists(filePath))

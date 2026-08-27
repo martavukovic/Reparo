@@ -219,7 +219,7 @@ public class FaultReportsController : ControllerBase
 
         var hasSuccessful = report.Assignments
             .SelectMany(a => a.Interventions)
-            .Any(i => i.InterventionStatus.Name == "Završena");
+            .Any(i => i.InterventionStatus.Name == "Completed");
 
         if (!hasSuccessful)
             return BadRequest("The report cannot be closed without a successfully completed intervention.");

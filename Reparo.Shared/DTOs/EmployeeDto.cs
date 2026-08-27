@@ -10,6 +10,7 @@ public class EmployeeDto
     public string LocationName { get; set; } = string.Empty;
     public bool IsTechnician { get; set; }
     public bool IsActive { get; set; }
+    public bool IsAvailable { get; set; }
 }
 
 public class EmployeeCreateDto
@@ -19,4 +20,5 @@ public class EmployeeCreateDto
     public int LocationId { get; set; }
     public bool IsTechnician { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsAvailable { get; set; } = true;
 }

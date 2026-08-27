@@ -1,0 +1,74 @@
+﻿@if (!BeforePhotos.Any() && !AfterPhotos.Any())
+{
+    return;
+}
+
+<MudPaper Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" Class="mb-3">📷 Photo Comparison</MudText>
+
+    <MudGrid>
+        <MudItem xs="12" sm="6">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Before Work</MudText>
+            @if (!BeforePhotos.Any())
+            {
+                <MudPaper Class="pa-4"
+                          Outlined="true"
+                          Style="height:200px; display:flex; align-items:center; justify-content:center; background:#f5f5f5;">
+                    <MudText Typo="Typo.body2" Style="color:grey;">
+                        No photo before work
+                    </MudText>
+                </MudPaper>
+            }
+            else
+            {
+                @foreach (var photo in BeforePhotos)
+                {
+                    <MudPaper Class="mb-2" Outlined="true">
+                        <img src="@($"https://localhost:7182{photo.Url}")"
+                             alt="Before work"
+                             style="width:100%; max-height:300px; object-fit:cover; border-radius:4px;" />
+                        <MudText Typo="Typo.caption" Class="pa-1">
+                            @photo.UploadedAt.ToString("dd.MM.yyyy HH:mm")
+                        </MudText>
+                    </MudPaper>
+                }
+            }
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">After Work</MudText>
+            @if (!AfterPhotos.Any())
+            {
+                <MudPaper Class="pa-4"
+                          Outlined="true"
+                          Style="height:200px; display:flex; align-items:center; justify-content:center; background:#f5f5f5;">
+                    <MudText Typo="Typo.body2" Style="color:grey;">
+                        No photo after work
+                    </MudText>
+                </MudPaper>
+            }
+            else
+            {
+                @foreach (var photo in AfterPhotos)
+                {
+                    <MudPaper Class="mb-2" Outlined="true">
+                        <img src="@($"https://localhost:7182{photo.Url}")"
+                             alt="After work"
+                             style="width:100%; max-height:300px; object-fit:cover; border-radius:4px;" />
+                        <MudText Typo="Typo.caption" Class="pa-1">
+                            @photo.UploadedAt.ToString("dd.MM.yyyy HH:mm")
+                        </MudText>
+                    </MudPaper>
+                }
+            }
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public List<AttachmentDto> BeforePhotos { get; set; } = new();
+
+    [Parameter]
+    public List<AttachmentDto> AfterPhotos { get; set; } = new();
+}

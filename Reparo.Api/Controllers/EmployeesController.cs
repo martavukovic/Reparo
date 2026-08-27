@@ -32,7 +32,8 @@ public class EmployeesController : ControllerBase
                 LocationId = e.LocationId,
                 LocationName = e.Location.Name,
                 IsTechnician = e.IsTechnician,
-                IsActive = e.IsActive
+                IsActive = e.IsActive,
+                IsAvailable = e.IsAvailable
             })
             .ToListAsync();
 
@@ -57,7 +58,8 @@ public class EmployeesController : ControllerBase
             LocationId = employee.LocationId,
             LocationName = employee.Location.Name,
             IsTechnician = employee.IsTechnician,
-            IsActive = employee.IsActive
+            IsActive = employee.IsActive,
+            IsAvailable = employee.IsAvailable
         });
     }
 
@@ -70,7 +72,8 @@ public class EmployeesController : ControllerBase
             LastName = dto.LastName,
             LocationId = dto.LocationId,
             IsTechnician = dto.IsTechnician,
-            IsActive = dto.IsActive
+            IsActive = dto.IsActive,
+            IsAvailable = dto.IsAvailable
         };
 
         _context.Employees.Add(employee);
@@ -85,7 +88,8 @@ public class EmployeesController : ControllerBase
                 LastName = employee.LastName,
                 LocationId = employee.LocationId,
                 IsTechnician = employee.IsTechnician,
-                IsActive = employee.IsActive
+                IsActive = employee.IsActive,
+                IsAvailable = employee.IsAvailable
             });
     }
 
@@ -102,6 +106,7 @@ public class EmployeesController : ControllerBase
         employee.LocationId = dto.LocationId;
         employee.IsTechnician = dto.IsTechnician;
         employee.IsActive = dto.IsActive;
+        employee.IsAvailable = dto.IsAvailable;
 
         await _context.SaveChangesAsync();
         return NoContent();

@@ -32,7 +32,8 @@ public class DashboardController : ControllerBase
         var openReports = await _context.FaultReports
             .Include(f => f.FaultStatus)
             .Where(f => !f.IsDeleted &&
-                f.FaultStatus.Name != "Closed")
+                f.FaultStatus.Name != "Closed" &&
+                f.FaultStatus.Name != "Resolved")
             .ToListAsync();
 
         var criticalPriorityId = await _context.FaultPriorities

@@ -103,9 +103,9 @@ public class InterventionsController : ControllerBase
 
         if (dto.StartedAt == default || dto.FinishedAt == default ||
             string.IsNullOrWhiteSpace(dto.Note))
-            return BadRequest("Completed intervention must have a start, end, and note.");
-
+            return BadRequest("Completed intervention must have start time, end time and a note.");
         var statusName = dto.IsSuccessful ? "Completed" : "Failed";
+
         var status = await _context.InterventionStatuses
             .FirstOrDefaultAsync(s => s.Name == statusName);
 

@@ -90,7 +90,7 @@ public class LookupsController : ControllerBase
     public async Task<ActionResult<List<LookupDto>>> GetTechnicians()
     {
         var items = await _context.Employees
-            .Where(e => e.IsActive && e.IsTechnician)
+            .Where(e => e.IsActive && e.IsTechnician && e.IsAvailable)
             .Select(e => new LookupDto
             {
                 Id = e.Id,

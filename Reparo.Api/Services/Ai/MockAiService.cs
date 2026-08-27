@@ -35,9 +35,28 @@ public sealed class MockAiService : IAiService
 
     private static string GenerateFaultSummary(string input)
     {
-        return $"[Mock AI] This fault report describes: {input.Trim()}. " +
-               "A technician has been assigned and intervention is underway. " +
-               "The issue is expected to be resolved shortly.";
+        var lines = input.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        string Get(string key) => lines
+            .FirstOrDefault(l => l.TrimStart().StartsWith(key))?
+            .Split(':', 2).LastOrDefault()?.Trim() ?? "-";
+
+        var title = Get("Title");
+        var location = Get("Location");
+        var priority = Get("Priority");
+        var status = Get("Status");
+        var type = Get("Type");
+        var deadline = Get("Deadline");
+        var interventions = Get("Interventions");
+        var materials = Get("Materials used");
+
+        var urgency = priority == "Critical" ? "urgent " : priority == "High" ? "high-priority " : "";
+
+        return $"[Mock AI] The {urgency}fault report \"{title}\" was submitted for {location}. " +
+               $"Fault type: {type}, current status: {status}." +
+               (deadline != "None" ? $" Deadline: {deadline}." : "") +
+               $" Interventions: {interventions}." +
+               (materials != "None" ? $" Materials used: {materials}." : " No materials used.");
     }
 
     private static AiSuggestionResult GenerateFaultSuggestion(string title)

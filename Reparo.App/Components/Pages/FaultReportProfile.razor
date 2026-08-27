@@ -80,6 +80,9 @@ else
                 </MudGrid>
             </MudPaper>
 
+            <PhotoComparison BeforePhotos="@BeforePhotos"
+                             AfterPhotos="@AfterPhotos" />
+
             <AttachmentUpload FaultReportId="@Id"
                               Attachments="@attachments"
                               OnAttachmentChanged="ReloadAttachments" />
@@ -94,8 +97,8 @@ else
                         <MudPaper Class="pa-3 mb-3"
                                   Outlined="true"
                                   Style="@(assignment.IsActive
-                                                                            ? "border-color: #7c4dff;"
-                                                                            : "opacity: 0.7;")">
+                                                                                                    ? "border-color: #7c4dff;"
+                                                                                                    : "opacity: 0.7;")">
                             <MudGrid>
                                 <MudItem xs="12" sm="6">
                                     <MudText Typo="Typo.subtitle2">
@@ -116,7 +119,9 @@ else
                                     </MudText>
                                     @if (!string.IsNullOrWhiteSpace(assignment.Note))
                                     {
-                                        <MudText Typo="Typo.body2">Note: @assignment.Note</MudText>
+                                        <MudText Typo="Typo.body2">
+                                            Note: @assignment.Note
+                                        </MudText>
                                     }
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
@@ -128,16 +133,18 @@ else
                                         <MudPaper Class="pa-2 mt-1" Outlined="true">
                                             <MudChip T="string"
                                                      Color="@GetInterventionStatusColor(
-                                                                                                                                      intervention.InterventionStatusName)"
+                                                                                                                                                              intervention.InterventionStatusName)"
                                                      Size="Size.Small">
                                                 @intervention.InterventionStatusName
                                             </MudChip>
                                             @if (intervention.StartedAt.HasValue)
                                             {
                                                 <MudText Typo="Typo.caption" Class="d-block">
-                                                    @intervention.StartedAt.Value.ToString("dd.MM.yyyy HH:mm")
+                                                    @intervention.StartedAt.Value
+                                                    .ToString("dd.MM.yyyy HH:mm")
                                                     —
-                                                    @(intervention.FinishedAt?.ToString("dd.MM.yyyy HH:mm") ?? "ongoing")
+                                                    @(intervention.FinishedAt?
+                                                        .ToString("dd.MM.yyyy HH:mm") ?? "ongoing")
                                                 </MudText>
                                             }
                                             @if (intervention.DurationMinutes.HasValue)
@@ -147,7 +154,7 @@ else
                                                 </MudText>
                                             }
                                             @if (!string.IsNullOrWhiteSpace(intervention.Note) &&
-                                                                                 intervention.Note != "-")
+                                                                                             intervention.Note != "-")
                                             {
                                                 <MudText Typo="Typo.caption">
                                                     @intervention.Note
@@ -157,8 +164,9 @@ else
                                             {
                                                 <MudText Typo="Typo.caption" Class="mt-1">
                                                     Materials:
-                                                    @string.Join(", ", intervention.Materials.Select(
-                                                        m => $"{m.MaterialName} {m.Quantity} {m.MaterialUnitName}"))
+                                                    @string.Join(", ",
+                                                        intervention.Materials.Select(m =>
+                                                            $"{m.MaterialName} {m.Quantity} {m.MaterialUnitName}"))
                                                 </MudText>
                                             }
                                         </MudPaper>
@@ -169,80 +177,87 @@ else
                     }
                 </MudPaper>
             }
-        </MudItem>
 
-        <MudPaper Class="pa-4 mb-4">
-            <MudText Typo="Typo.h6" Class="mb-3">Timeline</MudText>
-            <FaultReportTimeline FaultReportId="@Id" />
-        </MudPaper>
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Timeline</MudText>
+                <FaultReportTimeline FaultReportId="@Id" />
+            </MudPaper>
+        </MudItem>
 
         @if (CurrentUser.HasAnyRole("Admin", "Manager"))
         {
             <MudItem xs="12" md="4">
-                @if (CurrentUser.HasAnyRole("Admin", "Manager"))
+
+                @if (!string.IsNullOrWhiteSpace(message))
+                {
+                    <MudAlert Severity="@messageSeverity" Class="mb-3"
+                              ShowCloseIcon="true"
+                              CloseIconClicked="@(() => message = null)">
+                        @message
+                    </MudAlert>
+                }
+
+                <MudPaper Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">🤖 AI Summary</MudText>
+                    @if (aiSummary is not null)
+                    {
+                        <MudText Typo="Typo.body2" Class="mb-2">@aiSummary</MudText>
+                    }
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               Disabled="isLoadingSummary"
+                               OnClick="GetAiSummary">
+                        @(isLoadingSummary ? "Generating..." : "Generate Summary")
+                    </MudButton>
+                </MudPaper>
+
+                @if (report.FaultStatusName == "Submitted")
                 {
                     <MudPaper Class="pa-4 mb-4">
-                        <MudText Typo="Typo.h6" Class="mb-3">🤖 AI Summary</MudText>
-                        @if (aiSummary is not null)
-                        {
-                            <MudText Typo="Typo.body2" Class="mb-2">@aiSummary</MudText>
-                        }
-                        <MudButton Variant="Variant.Outlined"
+                        <MudText Typo="Typo.h6" Class="mb-3">Review Report</MudText>
+
+                        <MudSelect T="int?"
+                                   @bind-Value="reviewForm.FaultTypeId"
+                                   Label="Fault Type"
+                                   Variant="Variant.Outlined"
+                                   Class="mb-3"
+                                   Clearable="true">
+                            @foreach (var t in faultTypes)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)t.Id)">
+                                    @t.Name
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudSelect T="int?"
+                                   @bind-Value="reviewForm.FaultPriorityId"
+                                   Label="Priority"
+                                   Variant="Variant.Outlined"
+                                   Class="mb-3"
+                                   Clearable="true">
+                            @foreach (var p in priorities)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)p.Id)">
+                                    @p.Name
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudDatePicker @bind-Date="deadline"
+                                       Label="Deadline"
+                                       Variant="Variant.Outlined"
+                                       Class="mb-3" />
+
+                        <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    FullWidth="true"
-                                   Disabled="isLoadingSummary"
-                                   OnClick="GetAiSummary">
-                            @(isLoadingSummary ? "Generating..." : "Generate Summary")
+                                   OnClick="SaveReview">
+                            Save Review
                         </MudButton>
                     </MudPaper>
                 }
-                <MudPaper Class="pa-4 mb-4">
-                    <MudText Typo="Typo.h6" Class="mb-3">Review Report</MudText>
-
-                    <MudSelect T="int?"
-                               @bind-Value="reviewForm.FaultTypeId"
-                               Label="Fault Type"
-                               Variant="Variant.Outlined"
-                               Class="mb-3"
-                               Clearable="true">
-                        @foreach (var t in faultTypes)
-                        {
-                            <MudSelectItem T="int?" Value="@((int?)t.Id)">@t.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-
-                    <MudSelect T="int?"
-                               @bind-Value="reviewForm.FaultPriorityId"
-                               Label="Priority"
-                               Variant="Variant.Outlined"
-                               Class="mb-3"
-                               Clearable="true">
-                        @foreach (var p in priorities)
-                        {
-                            <MudSelectItem T="int?" Value="@((int?)p.Id)">@p.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-
-                    <MudDatePicker @bind-Date="deadline"
-                                   Label="Deadline"
-                                   Variant="Variant.Outlined"
-                                   Class="mb-3" />
-
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               FullWidth="true"
-                               OnClick="SaveReview"
-                               Class="mb-3">
-                        Save Review
-                    </MudButton>
-
-                    @if (!string.IsNullOrWhiteSpace(message))
-                    {
-                        <MudAlert Severity="@messageSeverity" Class="mb-3">
-                            @message
-                        </MudAlert>
-                    }
-                </MudPaper>
 
                 @if (report.FaultStatusName != "Resolved" &&
                                      report.FaultStatusName != "Closed")
@@ -262,7 +277,7 @@ else
                         </MudSelect>
 
                         <MudTextField @bind-Value="assignNote"
-                                      Label="Note"
+                                      Label="Note (optional)"
                                       Variant="Variant.Outlined"
                                       Class="mb-3" />
 
@@ -277,12 +292,12 @@ else
 
                 @if (report.FaultStatusName == "Resolved")
                 {
-                    <MudPaper Class="pa-4">
+                    <MudAlert Severity="Severity.Success" Class="mb-3">
+                        Intervention completed. Review photos and close the report.
+                    </MudAlert>
+
+                    <MudPaper Class="pa-4 mb-4">
                         <MudText Typo="Typo.h6" Class="mb-3">Close Report</MudText>
-                        <MudText Typo="Typo.body2" Class="mb-3">
-                            Intervention has been completed successfully.
-                            You can now close this report.
-                        </MudText>
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Success"
                                    FullWidth="true"
@@ -291,6 +306,14 @@ else
                         </MudButton>
                     </MudPaper>
                 }
+
+                @if (report.FaultStatusName == "Closed")
+                {
+                    <MudAlert Severity="Severity.Success">
+                        This report has been closed.
+                    </MudAlert>
+                }
+
             </MudItem>
         }
     </MudGrid>
@@ -314,6 +337,14 @@ else
     private List<WorkAssignmentDto> assignmentHistory = new();
     private string? aiSummary;
     private bool isLoadingSummary = false;
+
+    private List<AttachmentDto> BeforePhotos =>
+        attachments.Where(a => a.Purpose == "Photo Before Work" &&
+            a.ContentType.StartsWith("image/")).ToList();
+
+    private List<AttachmentDto> AfterPhotos =>
+        attachments.Where(a => a.Purpose == "Photo After Work" &&
+            a.ContentType.StartsWith("image/")).ToList();
 
     private async Task GetAiSummary()
     {
@@ -448,6 +479,7 @@ else
 
             if (response.IsSuccessStatusCode)
             {
+                Navigation.NavigateTo("/fault-reports");
                 message = "Report closed successfully.";
                 messageSeverity = Severity.Success;
                 await LoadData();

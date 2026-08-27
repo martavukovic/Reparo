@@ -531,7 +531,7 @@ else
                 Id = interventionId,
                 StartedAt = startDate.Value.Date + startTime.Value,
                 FinishedAt = endDate.Value.Date + endTime.Value,
-                Note = string.IsNullOrWhiteSpace(finishNote) ? "-" : finishNote,
+                Note = finishNote,
                 IsSuccessful = successful
             };
 
@@ -561,6 +561,12 @@ else
         catch (Exception ex)
         {
             finishError = $"Error: {ex.Message}";
+        }
+
+        if (string.IsNullOrWhiteSpace(finishNote))
+        {
+            finishError = "Note is required.";
+            return;
         }
     }
 

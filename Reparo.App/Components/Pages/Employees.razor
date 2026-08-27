@@ -53,6 +53,11 @@ else
                                  Label="Is Technician" />
                 </MudItem>
                 <MudItem xs="12" sm="3" Class="d-flex align-center">
+                    <MudCheckBox @bind-Value="form.IsAvailable"
+                                 Label="Available" />
+                </MudItem>
+                <MudTh>Available</MudTh>
+                <MudItem xs="12" sm="3" Class="d-flex align-center">
                     <MudCheckBox @bind-Value="form.IsActive"
                                  Label="Active" />
                 </MudItem>
@@ -102,6 +107,13 @@ else
                 <MudTd>@context.FirstName</MudTd>
                 <MudTd>@context.LastName</MudTd>
                 <MudTd>@context.LocationName</MudTd>
+                <MudTd>
+                    <MudChip T="string"
+                             Color="@(context.IsAvailable ? Color.Success : Color.Warning)"
+                             Size="Size.Small">
+                        @(context.IsAvailable ? "Available" : "Unavailable")
+                    </MudChip>
+                </MudTd>
                 <MudTd>
                     <MudChip T="string"
                              Color="@(context.IsTechnician ? Color.Info : Color.Default)"
@@ -174,7 +186,8 @@ else
             LastName = employee.LastName,
             LocationId = employee.LocationId,
             IsTechnician = employee.IsTechnician,
-            IsActive = employee.IsActive
+            IsActive = employee.IsActive,
+            IsAvailable = employee.IsAvailable
         };
         editingId = employee.Id;
         message = null;

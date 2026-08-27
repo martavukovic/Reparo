@@ -1,0 +1,122 @@
+﻿@page "/sla"
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+
+<PageTitle>SLA Reports - Reparo</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">SLA Reports</MudText>
+
+@if (!CurrentUser.HasAnyRole("Admin", "Manager"))
+{
+    <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
+}
+else if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else if (sla is not null)
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Style="border-left: 4px solid #7c4dff;">
+                <MudText Typo="Typo.caption">Total Reports</MudText>
+                <MudText Typo="Typo.h4">@sla.TotalReports</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Style="border-left: 4px solid #4caf50;">
+                <MudText Typo="Typo.caption">Resolved</MudText>
+                <MudText Typo="Typo.h4">@sla.ResolvedReports</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Style="border-left: 4px solid orange;">
+                <MudText Typo="Typo.caption">Overdue</MudText>
+                <MudText Typo="Typo.h4" Style="color: orange;">@sla.OverdueReports</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Style="border-left: 4px solid #00bcd4;">
+                <MudText Typo="Typo.caption">Resolution Rate</MudText>
+                <MudText Typo="Typo.h4">@sla.ResolutionRate%</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Style="border-left: 4px solid grey;">
+                <MudText Typo="Typo.caption">Avg. Resolution (days)</MudText>
+                <MudText Typo="Typo.h4">@sla.AverageResolutionDays</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">By Location</MudText>
+                <MudTable Items="@sla.ByLocation" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Location</MudTh>
+                        <MudTh>Total</MudTh>
+                        <MudTh>Resolved</MudTh>
+                        <MudTh>Avg. Days</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.LocationName</MudTd>
+                        <MudTd>@context.TotalReports</MudTd>
+                        <MudTd>
+                            <MudChip T="string"
+                                     Color="@(context.ResolvedReports == context.TotalReports
+                                                                                                              ? Color.Success : Color.Default)"
+                                     Size="Size.Small">
+                                @context.ResolvedReports
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@context.AverageResolutionDays</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">By Fault Type</MudText>
+                <MudTable Items="@sla.ByType" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Type</MudTh>
+                        <MudTh>Total</MudTh>
+                        <MudTh>Resolved</MudTh>
+                        <MudTh>Avg. Days</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.FaultTypeName</MudTd>
+                        <MudTd>@context.TotalReports</MudTd>
+                        <MudTd>
+                            <MudChip T="string"
+                                     Color="@(context.ResolvedReports == context.TotalReports
+                                                                                                              ? Color.Success : Color.Default)"
+                                     Size="Size.Small">
+                                @context.ResolvedReports
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@context.AverageResolutionDays</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private SlaDto? sla;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        try
+        {
+            sla = await Http.GetFromJsonAsync<SlaDto>("api/sla");
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+}

@@ -275,4 +275,98 @@ public class FaultReportsController : ControllerBase
 
         return Ok(reports);
     }
+
+    [HttpGet("{id}/timeline")]
+    public async Task<ActionResult<List<TimelineEventDto>>> GetTimeline(int id)
+    {
+        var report = await _context.FaultReports
+            .Include(f => f.FaultStatus)
+            .Include(f => f.ReportedByEmployee)
+            .Include(f => f.Assignments)
+                .ThenInclude(a => a.Technician)
+            .Include(f => f.Assignments)
+                .ThenInclude(a => a.Interventions)
+                    .ThenInclude(i => i.InterventionStatus)
+            .Include(f => f.Attachments)
+            .FirstOrDefaultAsync(f => f.Id == id && !f.IsDeleted);
+
+        if (report is null)
+            return NotFound();
+
+        var events = new List<TimelineEventDto>();
+
+        // Kreiranje prijave
+        events.Add(new TimelineEventDto
+        {
+            Timestamp = report.CreatedAt,
+            EventType = "Created",
+            Description = $"Fault report submitted: {report.Title}",
+            Actor = report.ReportedByEmployee.FirstName + " " +
+                    report.ReportedByEmployee.LastName,
+            Color = "primary",
+            Icon = "BugReport"
+        });
+
+        // Attachmenti
+        foreach (var att in report.Attachments.OrderBy(a => a.UploadedAt))
+        {
+            events.Add(new TimelineEventDto
+            {
+                Timestamp = att.UploadedAt,
+                EventType = "Attachment",
+                Description = $"{att.Purpose} uploaded: {att.OriginalFileName}",
+                Actor = "System",
+                Color = "info",
+                Icon = "AttachFile"
+            });
+        }
+
+        // Dodjele i intervencije
+        foreach (var assignment in report.Assignments.OrderBy(a => a.AssignedAt))
+        {
+            events.Add(new TimelineEventDto
+            {
+                Timestamp = assignment.AssignedAt,
+                EventType = "Assigned",
+                Description = $"Assigned to {assignment.Technician.FirstName} " +
+                              $"{assignment.Technician.LastName}" +
+                              (assignment.Note != null ? $" — {assignment.Note}" : ""),
+                Actor = "Manager",
+                Color = assignment.IsActive ? "secondary" : "default",
+                Icon = "Assignment"
+            });
+
+            foreach (var intervention in assignment.Interventions.OrderBy(i => i.CreatedAt))
+            {
+                events.Add(new TimelineEventDto
+                {
+                    Timestamp = intervention.CreatedAt,
+                    EventType = "InterventionStarted",
+                    Description = "Intervention started",
+                    Actor = assignment.Technician.FirstName + " " +
+                            assignment.Technician.LastName,
+                    Color = "warning",
+                    Icon = "Build"
+                });
+
+                if (intervention.FinishedAt.HasValue)
+                {
+                    var isCompleted = intervention.InterventionStatus.Name == "Completed";
+                    events.Add(new TimelineEventDto
+                    {
+                        Timestamp = intervention.FinishedAt.Value,
+                        EventType = isCompleted ? "InterventionCompleted" : "InterventionFailed",
+                        Description = $"Intervention {intervention.InterventionStatus.Name.ToLower()}" +
+                                      (intervention.Note != null && intervention.Note != "-"
+                                          ? $": {intervention.Note}" : ""),
+                        Actor = assignment.Technician.FirstName + " " +
+                                assignment.Technician.LastName,
+                        Color = isCompleted ? "success" : "error",
+                        Icon = isCompleted ? "CheckCircle" : "Cancel"
+                    });
+                }
+            }
+        }
+        return Ok(events.OrderBy(e => e.Timestamp).ToList());
+    }
 }

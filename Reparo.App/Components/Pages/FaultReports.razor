@@ -1,4 +1,5 @@
 ﻿@page "/fault-reports"
+@implements IDisposable
 @inject HttpClient Http
 @inject CurrentUserService CurrentUser
 @inject NavigationManager Navigation
@@ -29,8 +30,46 @@ else
                 <MudItem xs="12" sm="6">
                     <MudTextField @bind-Value="form.Title"
                                   Label="Title"
-                                  Variant="Variant.Outlined" />
+                                  Variant="Variant.Outlined"
+                                  @oninput="OnTitleInput" />
                 </MudItem>
+                    @if (aiSuggestion is not null && !aiSuggestion.IsConfirmed)
+                    {
+                        <MudItem xs="12">
+                            <MudPaper Class="pa-3" Style="border: 1px solid #7c4dff; border-radius: 8px;">
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">
+                                    🤖 AI Suggestion
+                                </MudText>
+                                <MudGrid>
+                                    <MudItem xs="12" sm="4">
+                                        <MudText Typo="Typo.caption">Suggested Fault Type</MudText>
+                                        <MudText Typo="Typo.body2">@aiSuggestion.SuggestedFaultType</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="4">
+                                        <MudText Typo="Typo.caption">Suggested Priority</MudText>
+                                        <MudText Typo="Typo.body2">@aiSuggestion.SuggestedPriority</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="4">
+                                        <MudText Typo="Typo.caption">Reasoning</MudText>
+                                        <MudText Typo="Typo.body2">@aiSuggestion.Reasoning</MudText>
+                                    </MudItem>
+                                </MudGrid>
+                                <MudStack Row="true" Class="mt-2">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               OnClick="AcceptAiSuggestion">
+                                        Accept
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text"
+                                               Size="Size.Small"
+                                               OnClick="@(() => aiSuggestion = null)">
+                                        Dismiss
+                                    </MudButton>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    }
                 <MudItem xs="12" sm="6">
                     <MudSelect T="int"
                                @bind-Value="form.LocationId"
@@ -220,6 +259,76 @@ else
     private bool showForm = false;
     private string? message;
     private Severity messageSeverity = Severity.Success;
+    private AiSuggestionResult? aiSuggestion;
+    private System.Timers.Timer? _debounceTimer;
+
+    private void OnTitleInput(ChangeEventArgs e)
+    {
+        form.Title = e.Value?.ToString() ?? string.Empty;
+
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+
+        if (form.Title.Length < 3)
+        {
+            aiSuggestion = null;
+            return;
+        }
+
+        _debounceTimer = new System.Timers.Timer(600);
+        _debounceTimer.Elapsed += async (_, _) =>
+        {
+            _debounceTimer?.Stop();
+            _debounceTimer?.Dispose();
+            _debounceTimer = null;
+
+            await InvokeAsync(async () =>
+            {
+                await GetAiSuggestion();
+                StateHasChanged();
+            });
+        };
+        _debounceTimer.Start();
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+    }
+
+    private async Task GetAiSuggestion()
+    {
+        if (string.IsNullOrWhiteSpace(form.Title) || form.Title.Length < 3)
+            return;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/ai/suggest", form.Title);
+            if (response.IsSuccessStatusCode)
+            {
+                aiSuggestion = await response.Content
+                    .ReadFromJsonAsync<AiSuggestionResult>();
+            }
+        }
+        catch { }
+    }
+
+    private void AcceptAiSuggestion()
+    {
+        if (aiSuggestion is null) return;
+
+        // Pronađi FaultTypeId prema nazivu
+        var matchedType = faultTypes.FirstOrDefault(t =>
+            t.Name.Equals(aiSuggestion.SuggestedFaultType,
+                StringComparison.OrdinalIgnoreCase));
+
+        if (matchedType is not null)
+            form.FaultTypeId = matchedType.Id; // Trebaš dodati FaultTypeId u FaultReportCreateDto
+
+        aiSuggestion.IsConfirmed = true;
+        aiSuggestion = null;
+    }
 
     protected override async Task OnInitializedAsync()
     {

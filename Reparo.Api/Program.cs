@@ -5,6 +5,8 @@ using Microsoft.IdentityModel.Tokens;
 using Reparo.Api.Data;
 using Reparo.Api.Models;
 using Reparo.Api.Services;
+using Reparo.Api.Services.Ai;
+using Reparo.Shared.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -87,6 +89,8 @@ builder.Services.AddCors(options =>
               .WithExposedHeaders("Content-Disposition");
     });
 });
+
+builder.Services.AddScoped<IAiService, MockAiService>();
 
 var app = builder.Build();
 

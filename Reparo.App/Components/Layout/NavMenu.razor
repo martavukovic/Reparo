@@ -71,6 +71,13 @@
             </MudNavLink>
         }
 
+        @if (CurrentUser.HasAnyRole("Admin", "Manager"))
+        {
+            <MudNavLink Href="/sla" Icon="@Icons.Material.Filled.Analytics">
+                SLA Reports
+            </MudNavLink>
+        }
+
         <MudDivider Class="my-2" />
 
         <MudNavLink Icon="@Icons.Material.Filled.Logout"

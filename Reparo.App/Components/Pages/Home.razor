@@ -21,6 +21,21 @@ else if (dashboard is not null)
 {
     @if (CurrentUser.HasAnyRole("Admin", "Manager"))
     {
+        @if (CurrentUser.HasRole("Admin") && aiProvider is not null)
+        {
+            <MudAlert Severity="@(aiProvider.UsesExternalService? Severity.Warning: Severity.Info)"
+                      Class="mb-4">
+                AI Provider: <strong>@aiProvider.Provider</strong>
+                @if (aiProvider.UsesExternalService)
+                {
+                    <span> — External service active</span>
+                }
+                else
+                {
+                    <span> — Running in Mock mode</span>
+                }
+            </MudAlert>
+        }
         <MudText Typo="Typo.h6" Class="mb-3">Overview</MudText>
         <MudGrid Class="mb-4">
             <MudItem xs="12" sm="6" md="3">
@@ -194,6 +209,7 @@ else if (dashboard is not null)
 @code {
     private DashboardDto? dashboard;
     private bool isLoading = true;
+    private AiProviderDto? aiProvider;
 
     protected override async Task OnInitializedAsync()
     {
@@ -206,6 +222,7 @@ else if (dashboard is not null)
         try
         {
             dashboard = await Http.GetFromJsonAsync<DashboardDto>("api/dashboard");
+            aiProvider = await Http.GetFromJsonAsync<AiProviderDto>("api/ai/provider");
         }
         catch { }
         finally

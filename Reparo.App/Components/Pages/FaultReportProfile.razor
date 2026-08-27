@@ -171,9 +171,31 @@ else
             }
         </MudItem>
 
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Timeline</MudText>
+            <FaultReportTimeline FaultReportId="@Id" />
+        </MudPaper>
+
         @if (CurrentUser.HasAnyRole("Admin", "Manager"))
         {
             <MudItem xs="12" md="4">
+                @if (CurrentUser.HasAnyRole("Admin", "Manager"))
+                {
+                    <MudPaper Class="pa-4 mb-4">
+                        <MudText Typo="Typo.h6" Class="mb-3">🤖 AI Summary</MudText>
+                        @if (aiSummary is not null)
+                        {
+                            <MudText Typo="Typo.body2" Class="mb-2">@aiSummary</MudText>
+                        }
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   Disabled="isLoadingSummary"
+                                   OnClick="GetAiSummary">
+                            @(isLoadingSummary ? "Generating..." : "Generate Summary")
+                        </MudButton>
+                    </MudPaper>
+                }
                 <MudPaper Class="pa-4 mb-4">
                     <MudText Typo="Typo.h6" Class="mb-3">Review Report</MudText>
 
@@ -290,6 +312,21 @@ else
     private string? message;
     private Severity messageSeverity = Severity.Success;
     private List<WorkAssignmentDto> assignmentHistory = new();
+    private string? aiSummary;
+    private bool isLoadingSummary = false;
+
+    private async Task GetAiSummary()
+    {
+        isLoadingSummary = true;
+        try
+        {
+            var response = await Http.GetAsync($"api/ai/summarize/{Id}");
+            if (response.IsSuccessStatusCode)
+                aiSummary = await response.Content.ReadAsStringAsync();
+        }
+        catch { }
+        finally { isLoadingSummary = false; }
+    }
 
     protected override async Task OnInitializedAsync()
     {

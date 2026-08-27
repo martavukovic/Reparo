@@ -27,6 +27,7 @@ public class FaultReportCreateDto
     public string Description { get; set; } = string.Empty;
     public int LocationId { get; set; }
     public int ReportedByEmployeeId { get; set; }
+    public int? FaultTypeId { get; set; }
 }
 
 public class FaultReportUpdateDto

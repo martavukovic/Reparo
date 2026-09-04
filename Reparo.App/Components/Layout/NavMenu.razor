@@ -3,86 +3,119 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<MudNavMenu>
+<MudNavMenu Class="pa-2">
     @if (!CurrentUser.IsLoggedIn)
     {
-        <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login">
-            Prijava
+        <MudNavLink Href="/login"
+                    Icon="@Icons.Material.Filled.Login"
+                    Match="NavLinkMatch.All">
+            Sign In
         </MudNavLink>
     }
     else
     {
-        <MudNavLink Href="/" Icon="@Icons.Material.Filled.Dashboard"
+        <MudNavLink Href="/"
+                    Icon="@Icons.Material.Filled.Dashboard"
                     Match="NavLinkMatch.All">
             Dashboard
         </MudNavLink>
 
         @if (CurrentUser.HasAnyRole("Admin", "Manager"))
         {
-            <MudNavLink Href="/locations" Icon="@Icons.Material.Filled.LocationOn">
-                Lokacije
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.caption"
+                     Class="px-4 py-1"
+                     Style="color: var(--mud-palette-text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                Management
+            </MudText>
+
+            <MudNavLink Href="/locations"
+                        Icon="@Icons.Material.Filled.LocationOn">
+                Locations
             </MudNavLink>
 
-            <MudNavLink Href="/fault-reports" Icon="@Icons.Material.Filled.BugReport">
-                Prijave kvarova
+            <MudNavLink Href="/employees"
+                        Icon="@Icons.Material.Filled.Badge">
+                Employees
             </MudNavLink>
 
-            <MudNavLink Href="/assignments" Icon="@Icons.Material.Filled.Assignment">
-                Dodjele
+            <MudNavLink Href="/fault-reports"
+                        Icon="@Icons.Material.Filled.BugReport">
+                Fault Reports
             </MudNavLink>
 
-            <MudNavLink Href="/interventions" Icon="@Icons.Material.Filled.Build">
-                Intervencije
+            <MudNavLink Href="/assignments"
+                        Icon="@Icons.Material.Filled.Assignment">
+                Assignments
+            </MudNavLink>
+
+            <MudNavLink Href="/interventions"
+                        Icon="@Icons.Material.Filled.Build">
+                Interventions
+            </MudNavLink>
+
+            <MudNavLink Href="/materials"
+                        Icon="@Icons.Material.Filled.Inventory">
+                Materials
+            </MudNavLink>
+
+            <MudNavLink Href="/sla"
+                        Icon="@Icons.Material.Filled.Analytics">
+                SLA Reports
             </MudNavLink>
         }
 
         @if (CurrentUser.HasRole("Admin"))
         {
-            <MudNavLink Href="/users" Icon="@Icons.Material.Filled.People">
-                Korisnici
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.caption"
+                     Class="px-4 py-1"
+                     Style="color: var(--mud-palette-text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                Admin
+            </MudText>
+
+            <MudNavLink Href="/users"
+                        Icon="@Icons.Material.Filled.People">
+                Users
             </MudNavLink>
         }
 
         @if (CurrentUser.HasRole("Reporter"))
         {
-            <MudNavLink Href="/my-reports" Icon="@Icons.Material.Filled.ListAlt">
-                Moje prijave
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.caption"
+                     Class="px-4 py-1"
+                     Style="color: var(--mud-palette-text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                My Work
+            </MudText>
+
+            <MudNavLink Href="/my-reports"
+                        Icon="@Icons.Material.Filled.ListAlt">
+                My Reports
             </MudNavLink>
         }
 
         @if (CurrentUser.HasRole("Technician"))
         {
-            <MudNavLink Href="/my-assignments" Icon="@Icons.Material.Filled.Engineering">
-                Moji nalozi
-            </MudNavLink>
-        }
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.caption"
+                     Class="px-4 py-1"
+                     Style="color: var(--mud-palette-text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                My Work
+            </MudText>
 
-        @if (CurrentUser.HasAnyRole("Admin", "Manager"))
-        {
-            <MudNavLink Href="/employees" Icon="@Icons.Material.Filled.Badge">
-                Employees
-            </MudNavLink>
-        }
-    
-        @if (CurrentUser.HasAnyRole("Admin", "Manager"))
-        {
-            <MudNavLink Href="/materials" Icon="@Icons.Material.Filled.Inventory">
-                Materials
-            </MudNavLink>
-        }
-
-        @if (CurrentUser.HasAnyRole("Admin", "Manager"))
-        {
-            <MudNavLink Href="/sla" Icon="@Icons.Material.Filled.Analytics">
-                SLA Reports
+            <MudNavLink Href="/my-assignments"
+                        Icon="@Icons.Material.Filled.Engineering">
+                My Assignments
             </MudNavLink>
         }
 
         <MudDivider Class="my-2" />
 
         <MudNavLink Icon="@Icons.Material.Filled.Logout"
-                    OnClick="HandleLogout">
-            Odjava
+                    OnClick="HandleLogout"
+                    Style="color: var(--mud-palette-error);">
+            Sign Out
         </MudNavLink>
     }
 </MudNavMenu>
@@ -93,10 +126,7 @@
         CurrentUser.UserChanged += HandleUserChanged;
     }
 
-    private void HandleUserChanged()
-    {
-        _ = InvokeAsync(StateHasChanged);
-    }
+    private void HandleUserChanged() => InvokeAsync(StateHasChanged);
 
     private void HandleLogout()
     {

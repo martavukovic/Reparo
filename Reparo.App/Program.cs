@@ -12,6 +12,7 @@ builder.Services.AddMudServices();
 builder.Services.AddSingleton<CurrentUserService>();
 builder.Services.AddSingleton<AuthHeaderHandler>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddSingleton<ThemeService>();
 
 builder.Services.AddHttpClient("ReparoApi", client =>
 {

@@ -165,9 +165,10 @@ public class InterventionsController : ControllerBase
 
     [HttpGet("list")]
     [Authorize(Roles = "Admin,Manager")]
-    public async Task<ActionResult<List<InterventionListDto>>> GetList()
+    public async Task<ActionResult<List<InterventionListDto>>> GetList(
+        [FromQuery] InterventionFilterDto filter)
     {
-        var interventions = await _context.Interventions
+        var query = _context.Interventions
             .Include(i => i.WorkAssignment)
                 .ThenInclude(a => a.FaultReport)
                     .ThenInclude(f => f.Location)
@@ -175,7 +176,49 @@ public class InterventionsController : ControllerBase
                 .ThenInclude(a => a.Technician)
             .Include(i => i.InterventionStatus)
             .Include(i => i.Materials)
-            .OrderByDescending(i => i.CreatedAt)
+            .AsQueryable();
+
+        // Filtriranje
+        if (!string.IsNullOrWhiteSpace(filter.SearchText))
+        {
+            var search = filter.SearchText.ToLower();
+            query = query.Where(i =>
+                i.WorkAssignment.FaultReport.Title.ToLower().Contains(search) ||
+                (i.Note != null && i.Note.ToLower().Contains(search)) ||
+                i.WorkAssignment.FaultReportId.ToString().Contains(search));
+        }
+
+        if (filter.StatusId.HasValue)
+            query = query.Where(i => i.InterventionStatusId == filter.StatusId);
+
+        if (filter.TechnicianId.HasValue)
+            query = query.Where(i =>
+                i.WorkAssignment.TechnicianId == filter.TechnicianId);
+
+        if (filter.DateFrom.HasValue)
+            query = query.Where(i => i.CreatedAt >= filter.DateFrom);
+
+        if (filter.DateTo.HasValue)
+            query = query.Where(i => i.CreatedAt <= filter.DateTo);
+
+        // Sortiranje
+        query = filter.SortBy switch
+        {
+            "status" => filter.SortDescending
+                ? query.OrderByDescending(i => i.InterventionStatusId)
+                : query.OrderBy(i => i.InterventionStatusId),
+            "technician" => filter.SortDescending
+                ? query.OrderByDescending(i => i.WorkAssignment.Technician.LastName)
+                : query.OrderBy(i => i.WorkAssignment.Technician.LastName),
+            "duration" => filter.SortDescending
+                ? query.OrderByDescending(i => i.DurationMinutes)
+                : query.OrderBy(i => i.DurationMinutes),
+            _ => filter.SortDescending
+                ? query.OrderByDescending(i => i.CreatedAt)
+                : query.OrderBy(i => i.CreatedAt)
+        };
+
+        var interventions = await query
             .Select(i => new InterventionListDto
             {
                 Id = i.Id,

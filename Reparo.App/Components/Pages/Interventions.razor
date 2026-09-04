@@ -16,30 +16,62 @@ else
     <MudPaper Class="pa-4 mb-4">
         <MudGrid>
             <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="filter.SearchText"
+                              Label="Search by title or report #"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
                 <MudSelect T="int?"
-                           @bind-Value="filterStatusId"
+                           @bind-Value="filter.StatusId"
                            Label="Status"
                            Variant="Variant.Outlined"
                            Clearable="true">
                     @foreach (var s in statuses)
                     {
-                        <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)s.Id)">
+                            @s.Name
+                        </MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudSelect T="int?"
-                           @bind-Value="filterTechnicianId"
+                           @bind-Value="filter.TechnicianId"
                            Label="Technician"
                            Variant="Variant.Outlined"
                            Clearable="true">
                     @foreach (var t in technicians)
                     {
-                        <MudSelectItem T="int?" Value="@((int?)t.Id)">@t.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)t.Id)">
+                            @t.Name
+                        </MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
-            <MudItem xs="12" sm="4" Class="d-flex align-center gap-2">
+            <MudItem xs="12" sm="3">
+                <MudDatePicker @bind-Date="dateFrom"
+                               Label="Date From"
+                               Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudDatePicker @bind-Date="dateTo"
+                               Label="Date To"
+                               Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudSelect T="string"
+                           @bind-Value="filter.SortBy"
+                           Label="Sort By"
+                           Variant="Variant.Outlined"
+                           Clearable="true">
+                    <MudSelectItem T="string" Value="@("status")">Status</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("technician")">Technician</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("duration")">Duration</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3" Class="d-flex align-center gap-2">
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            OnClick="ApplyFilter">
@@ -57,27 +89,48 @@ else
     {
         <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
     }
-    else if (filteredInterventions.Count == 0)
+    else if (interventions.Count == 0)
     {
         <MudAlert Severity="Severity.Info">No interventions found.</MudAlert>
     }
     else
     {
-        <MudTable Items="@filteredInterventions"
+        <MudText Typo="Typo.body2" Class="mb-2" Style="color: grey;">
+            @interventions.Count result(s) found.
+        </MudText>
+
+        <MudTable Items="@interventions"
                   Hover="true" Striped="true" Dense="true">
             <HeaderContent>
-                <MudTh>Fault Report</MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortBy="new Func<InterventionListDto, object>(x => x.FaultReportTitle)">
+                        Fault Report
+                    </MudTableSortLabel>
+                </MudTh>
                 <MudTh>Location</MudTh>
-                <MudTh>Technician</MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortBy="new Func<InterventionListDto, object>(x => x.TechnicianName)">
+                        Technician
+                    </MudTableSortLabel>
+                </MudTh>
                 <MudTh>Status</MudTh>
                 <MudTh>Started</MudTh>
                 <MudTh>Finished</MudTh>
-                <MudTh>Duration (min)</MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortBy="new Func<InterventionListDto, object>(x => x.DurationMinutes ?? 0)">
+                        Duration (min)
+                    </MudTableSortLabel>
+                </MudTh>
                 <MudTh>Materials</MudTh>
                 <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd>@context.FaultReportTitle</MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@context.FaultReportTitle</MudText>
+                    <MudText Typo="Typo.caption" Style="color: grey;">
+                        #@context.FaultReportId
+                    </MudText>
+                </MudTd>
                 <MudTd>@context.LocationName</MudTd>
                 <MudTd>@context.TechnicianName</MudTd>
                 <MudTd>
@@ -87,8 +140,12 @@ else
                         @context.InterventionStatusName
                     </MudChip>
                 </MudTd>
-                <MudTd>@(context.StartedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")</MudTd>
-                <MudTd>@(context.FinishedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")</MudTd>
+                <MudTd>
+                    @(context.StartedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")
+                </MudTd>
+                <MudTd>
+                    @(context.FinishedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")
+                </MudTd>
                 <MudTd>@(context.DurationMinutes?.ToString() ?? "-")</MudTd>
                 <MudTd>@context.MaterialCount</MudTd>
                 <MudTd>
@@ -103,56 +160,83 @@ else
 }
 
 @code {
-    private List<InterventionListDto> allInterventions = new();
-    private List<InterventionListDto> filteredInterventions = new();
+    private List<InterventionListDto> interventions = new();
     private List<LookupDto> statuses = new();
     private List<LookupDto> technicians = new();
-    private int? filterStatusId;
-    private int? filterTechnicianId;
+    private InterventionFilterDto filter = new();
+    private DateTime? dateFrom;
+    private DateTime? dateTo;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
+        await LoadLookups();
+        await LoadInterventions();
     }
 
-    private async Task LoadData()
+    private async Task LoadLookups()
+    {
+        try
+        {
+            var t1 = Http.GetFromJsonAsync<List<LookupDto>>(
+                "api/lookups/intervention-statuses");
+            var t2 = Http.GetFromJsonAsync<List<LookupDto>>(
+                "api/lookups/technicians");
+
+            await Task.WhenAll(t1, t2);
+
+            statuses = t1.Result ?? new();
+            technicians = t2.Result ?? new();
+        }
+        catch { }
+    }
+
+    private async Task LoadInterventions()
     {
         isLoading = true;
         try
         {
-            var t1 = Http.GetFromJsonAsync<List<InterventionListDto>>("api/interventions/list");
-            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/intervention-statuses");
-            var t3 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/technicians");
+            filter.DateFrom = dateFrom;
+            filter.DateTo = dateTo;
 
-            await Task.WhenAll(t1, t2, t3);
-
-            allInterventions = t1.Result ?? new();
-            filteredInterventions = allInterventions;
-            statuses = t2.Result ?? new();
-            technicians = t3.Result ?? new();
+            var query = BuildQueryString();
+            interventions = await Http.GetFromJsonAsync<List<InterventionListDto>>(
+                $"api/interventions/list?{query}") ?? new();
         }
         catch { }
         finally { isLoading = false; }
     }
 
-    private void ApplyFilter()
+    private string BuildQueryString()
     {
-        filteredInterventions = allInterventions.Where(i =>
-        {
-            if (filterStatusId.HasValue &&
-                i.InterventionStatusId != filterStatusId) return false;
-            if (filterTechnicianId.HasValue &&
-                i.TechnicianId != filterTechnicianId) return false;
-            return true;
-        }).ToList();
+        var parts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchText))
+            parts.Add($"SearchText={Uri.EscapeDataString(filter.SearchText)}");
+        if (filter.StatusId.HasValue)
+            parts.Add($"StatusId={filter.StatusId}");
+        if (filter.TechnicianId.HasValue)
+            parts.Add($"TechnicianId={filter.TechnicianId}");
+        if (filter.DateFrom.HasValue)
+            parts.Add($"DateFrom={filter.DateFrom.Value:yyyy-MM-dd}");
+        if (filter.DateTo.HasValue)
+            parts.Add($"DateTo={filter.DateTo.Value:yyyy-MM-dd}");
+        if (!string.IsNullOrWhiteSpace(filter.SortBy))
+            parts.Add($"SortBy={filter.SortBy}");
+
+        parts.Add($"SortDescending={filter.SortDescending}");
+
+        return string.Join("&", parts);
     }
 
-    private void ResetFilter()
+    private async Task ApplyFilter() => await LoadInterventions();
+
+    private async Task ResetFilter()
     {
-        filterStatusId = null;
-        filterTechnicianId = null;
-        filteredInterventions = allInterventions;
+        filter = new InterventionFilterDto();
+        dateFrom = null;
+        dateTo = null;
+        await LoadInterventions();
     }
 
     private Color GetStatusColor(string? status) => status switch

@@ -260,6 +260,38 @@ public class WorkAssignmentsController : ControllerBase
         return Ok(assignments);
     }
 
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<ActionResult> Update(int id, [FromBody] string? note)
+    {
+        var assignment = await _context.WorkAssignments.FindAsync(id);
+        if (assignment is null)
+            return NotFound();
+
+        assignment.Note = note;
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPut("{id}/technician")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<ActionResult> UpdateTechnician(
+    int id, WorkAssignmentCreateDto dto)
+    {
+        var assignment = await _context.WorkAssignments
+            .Include(a => a.FaultReport)
+            .FirstOrDefaultAsync(a => a.Id == id && a.IsActive);
+
+        if (assignment is null)
+            return NotFound();
+
+        assignment.TechnicianId = dto.TechnicianId;
+        assignment.Note = dto.Note;
+
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpGet("fault-report/{faultReportId}")]
     [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<List<WorkAssignmentDto>>> GetByFaultReport(int faultReportId)

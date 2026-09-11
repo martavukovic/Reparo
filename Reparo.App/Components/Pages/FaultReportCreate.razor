@@ -1,0 +1,431 @@
+﻿@page "/fault-reports/create"
+@page "/fault-reports/edit/{Id:int}"
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>@(Id == 0 ? "New Fault Report" : "Edit Fault Report") - Reparo</PageTitle>
+
+<MudButton Variant="Variant.Text"
+           StartIcon="@Icons.Material.Filled.ArrowBack"
+           OnClick="@(() => Navigation.NavigateTo("/fault-reports"))"
+           Class="mb-4">
+    Back
+</MudButton>
+
+<MudText Typo="Typo.h4" Class="mb-4">
+    @(Id == 0 ? "New Fault Report" : "Edit Fault Report")
+</MudText>
+
+@if (!CurrentUser.HasAnyRole("Admin", "Manager", "Reporter"))
+{
+    <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
+}
+else if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="8">
+            <MudPaper Class="pa-4">
+
+                @if (!string.IsNullOrWhiteSpace(message))
+                {
+                    <MudAlert Severity="@messageSeverity" Class="mb-4"
+                              ShowCloseIcon="true"
+                              CloseIconClicked="@(() => message = null)">
+                        @message
+                    </MudAlert>
+                }
+
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="form.Title"
+                                      Label="Title"
+                                      Variant="Variant.Outlined"
+                                      @oninput="OnTitleInput"
+                                      HelperText="Describe the fault briefly" />
+                    </MudItem>
+
+                    @if (aiSuggestion is not null && !aiSuggestion.IsConfirmed)
+                    {
+                        <MudItem xs="12">
+                            <MudPaper Class="pa-3"
+                                      Style="border: 1px solid var(--mud-palette-primary); border-radius: 8px;">
+                                <MudStack Row="true"
+                                          AlignItems="AlignItems.Center"
+                                          Class="mb-2">
+                                    <MudText Typo="Typo.subtitle2">
+                                        🤖 AI Suggestion
+                                    </MudText>
+                                    <MudSpacer />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => aiSuggestion = null)" />
+                                </MudStack>
+                                <MudGrid>
+                                    <MudItem xs="12" sm="4">
+                                        <MudText Typo="Typo.caption">Suggested Type</MudText>
+                                        <MudText Typo="Typo.body2">
+                                            @aiSuggestion.SuggestedFaultType
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="4">
+                                        <MudText Typo="Typo.caption">Suggested Priority</MudText>
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="@GetPriorityColor(
+                                                                                                                                                  aiSuggestion.SuggestedPriority)">
+                                            @aiSuggestion.SuggestedPriority
+                                        </MudChip>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="4">
+                                        <MudText Typo="Typo.caption">Reasoning</MudText>
+                                        <MudText Typo="Typo.body2">
+                                            @aiSuggestion.Reasoning
+                                        </MudText>
+                                    </MudItem>
+                                </MudGrid>
+                                <MudStack Row="true" Class="mt-2">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               OnClick="AcceptAiSuggestion">
+                                        Accept
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text"
+                                               Size="Size.Small"
+                                               OnClick="@(() => aiSuggestion = null)">
+                                        Dismiss
+                                    </MudButton>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    }
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="form.Description"
+                                      Label="Description"
+                                      Variant="Variant.Outlined"
+                                      Lines="4"
+                                      HelperText="Provide as much detail as possible" />
+                    </MudItem>
+
+                    @if (Id == 0)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="int"
+                                       @bind-Value="form.LocationId"
+                                       Label="Location"
+                                       Variant="Variant.Outlined">
+                                @foreach (var l in locations)
+                                {
+                                    <MudSelectItem T="int" Value="@l.Id">@l.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    }
+
+                    @if (CurrentUser.HasAnyRole("Admin", "Manager") && Id == 0)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="int?"
+                                       @bind-Value="form.FaultTypeId"
+                                       Label="Fault Type (optional)"
+                                       Variant="Variant.Outlined"
+                                       Clearable="true">
+                                @foreach (var t in faultTypes)
+                                {
+                                    <MudSelectItem T="int?" Value="@((int?)t.Id)">
+                                        @t.Name
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    }
+
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">
+                            Photo Before Work (optional)
+                        </MudText>
+                        <InputFile OnChange="HandleFileSelected"
+                                   accept="image/jpeg,image/png,image/webp" />
+                        @if (selectedFile is not null)
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-1">
+                                @selectedFile.Name
+                                (@($"{selectedFile.Size / 1024:N0} KB"))
+                            </MudText>
+                        }
+                    </MudItem>
+                </MudGrid>
+
+                <MudStack Row="true" Class="mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="isSaving"
+                               OnClick="Save">
+                        @(isSaving ? "Saving..." : (Id == 0 ? "Submit Report" : "Save Changes"))
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               OnClick="@(() => Navigation.NavigateTo("/fault-reports"))">
+                        Cancel
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.subtitle2" Class="mb-3">💡 Tips</MudText>
+                <MudText Typo="Typo.body2" Class="mb-2">
+                    • Be specific in the title — the AI will suggest fault type and priority
+                </MudText>
+                <MudText Typo="Typo.body2" Class="mb-2">
+                    • Add a photo to help the technician understand the issue
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    • Select the correct location so the right team is notified
+                </MudText>
+            </MudPaper>
+
+            @if (Id != 0)
+            {
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Note</MudText>
+                    <MudText Typo="Typo.body2">
+                        Editing a fault report does not change its status or assignment.
+                        Use the report profile to manage assignments and interventions.
+                    </MudText>
+                </MudPaper>
+            }
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public int Id { get; set; } = 0;
+
+    private FaultReportCreateDto form = new();
+    private List<LookupDto> locations = new();
+    private List<LookupDto> employees = new();
+    private List<LookupDto> faultTypes = new();
+    private IBrowserFile? selectedFile;
+    private AiSuggestionResult? aiSuggestion;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string? message;
+    private Severity messageSeverity = Severity.Success;
+    private System.Timers.Timer? _debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLookups();
+
+        if (Id != 0)
+            await LoadExisting();
+        else if (CurrentUser.User?.EmployeeId is not null)
+            form.ReportedByEmployeeId = CurrentUser.User.EmployeeId.Value;
+
+        isLoading = false;
+    }
+
+    private async Task LoadLookups()
+    {
+        try
+        {
+            var t1 = Http.GetFromJsonAsync<List<LookupDto>>("api/locations/lookup");
+            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/employees");
+            var t3 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/fault-types");
+
+            await Task.WhenAll(t1, t2, t3);
+
+            locations = t1.Result ?? new();
+            employees = t2.Result ?? new();
+            faultTypes = t3.Result ?? new();
+        }
+        catch { }
+    }
+
+    private async Task LoadExisting()
+    {
+        try
+        {
+            var report = await Http.GetFromJsonAsync<FaultReportDto>(
+                $"api/faultreports/{Id}");
+
+            if (report is not null)
+            {
+                form.Title = report.Title;
+                form.Description = report.Description;
+                form.LocationId = report.LocationId;
+                form.ReportedByEmployeeId = report.ReportedByEmployeeId;
+                form.FaultTypeId = report.FaultTypeId;
+            }
+        }
+        catch { }
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+
+    private void OnTitleInput(ChangeEventArgs e)
+    {
+        form.Title = e.Value?.ToString() ?? string.Empty;
+
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+
+        if (form.Title.Length < 3)
+        {
+            aiSuggestion = null;
+            return;
+        }
+
+        _debounceTimer = new System.Timers.Timer(600);
+        _debounceTimer.Elapsed += async (_, _) =>
+        {
+            _debounceTimer?.Stop();
+            _debounceTimer?.Dispose();
+            _debounceTimer = null;
+
+            await InvokeAsync(async () =>
+            {
+                await GetAiSuggestion();
+                StateHasChanged();
+            });
+        };
+        _debounceTimer.Start();
+    }
+
+    private async Task GetAiSuggestion()
+    {
+        if (string.IsNullOrWhiteSpace(form.Title) || form.Title.Length < 3)
+            return;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/ai/suggest", form.Title);
+            if (response.IsSuccessStatusCode)
+                aiSuggestion = await response.Content
+                    .ReadFromJsonAsync<AiSuggestionResult>();
+        }
+        catch { }
+    }
+
+    private void AcceptAiSuggestion()
+    {
+        if (aiSuggestion is null) return;
+
+        var matchedType = faultTypes.FirstOrDefault(t =>
+            t.Name.Equals(aiSuggestion.SuggestedFaultType,
+                StringComparison.OrdinalIgnoreCase));
+
+        if (matchedType is not null)
+            form.FaultTypeId = matchedType.Id;
+
+        aiSuggestion.IsConfirmed = true;
+        aiSuggestion = null;
+    }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(form.Title))
+        {
+            message = "Title is required.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (form.LocationId == 0)
+        {
+            message = "Please select a location.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        if (form.ReportedByEmployeeId == 0)
+        {
+            message = "Reporter is required.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            HttpResponseMessage response;
+
+            if (Id == 0)
+                response = await Http.PostAsJsonAsync("api/faultreports", form);
+            else
+                response = await Http.PutAsJsonAsync($"api/faultreports/{Id}/edit", form);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var created = Id == 0
+                    ? await response.Content.ReadFromJsonAsync<FaultReportDto>()
+                    : null;
+
+                if (selectedFile is not null)
+                {
+                    var reportId = Id == 0 ? created?.Id ?? 0 : Id;
+                    if (reportId > 0)
+                    {
+                        using var content = new MultipartFormDataContent();
+                        var fileContent = new StreamContent(
+                            selectedFile.OpenReadStream(
+                                maxAllowedSize: 10 * 1024 * 1024));
+                        fileContent.Headers.ContentType =
+                            new System.Net.Http.Headers.MediaTypeHeaderValue(
+                                selectedFile.ContentType);
+
+                        content.Add(new StringContent(reportId.ToString()),
+                            "faultReportId");
+                        content.Add(new StringContent("Photo Before Work"), "purpose");
+                        content.Add(fileContent, "file", selectedFile.Name);
+
+                        await Http.PostAsync("api/attachments", content);
+                    }
+                }
+
+                Navigation.NavigateTo(Id == 0
+                    ? $"/fault-reports/{created?.Id ?? 0}"
+                    : $"/fault-reports/{Id}");
+            }
+            else
+            {
+                message = $"Error: {await response.Content.ReadAsStringAsync()}";
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private Color GetPriorityColor(string? priority) => priority switch
+    {
+        "Critical" => Color.Error,
+        "High" => Color.Warning,
+        "Medium" => Color.Info,
+        _ => Color.Default
+    };
+
+    public void Dispose()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+    }
+}

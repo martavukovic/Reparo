@@ -18,6 +18,7 @@ public class FaultReportDto
     public DateTime? Deadline { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool IsDeleted { get; set; }
+    public bool HasFailedIntervention { get; set; }
     public string? ActiveTechnicianName { get; set; }
 }
 

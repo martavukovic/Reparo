@@ -15,6 +15,7 @@ public class WorkAssignmentDto
     public string? AssignedByName { get; set; }
     public bool IsActive { get; set; }
     public string? Note { get; set; }
+    public bool HasFailedIntervention { get; set; }
     public List<InterventionDto> Interventions { get; set; } = new();
 }
 

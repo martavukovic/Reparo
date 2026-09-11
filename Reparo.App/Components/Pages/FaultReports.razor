@@ -1,12 +1,20 @@
 ﻿@page "/fault-reports"
-@implements IDisposable
 @inject HttpClient Http
 @inject CurrentUserService CurrentUser
 @inject NavigationManager Navigation
 
 <PageTitle>Fault Reports - Reparo</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Fault Reports</MudText>
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Fault Reports</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="@(() => Navigation.NavigateTo("/fault-reports/create"))">
+        New Fault Report
+    </MudButton>
+</MudStack>
 
 @if (!CurrentUser.HasAnyRole("Admin", "Manager"))
 {
@@ -14,113 +22,6 @@
 }
 else
 {
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Primary"
-               Class="mb-4"
-               OnClick="OpenCreateForm">
-        New Fault Report
-    </MudButton>
-
-    @if (showForm)
-    {
-        <MudPaper Class="pa-4 mb-4">
-            <MudText Typo="Typo.h6" Class="mb-3">New Fault Report</MudText>
-
-            <MudGrid>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="form.Title"
-                                  Label="Title"
-                                  Variant="Variant.Outlined"
-                                  @oninput="OnTitleInput" />
-                </MudItem>
-                    @if (aiSuggestion is not null && !aiSuggestion.IsConfirmed)
-                    {
-                        <MudItem xs="12">
-                            <MudPaper Class="pa-3" Style="border: 1px solid #7c4dff; border-radius: 8px;">
-                                <MudText Typo="Typo.subtitle2" Class="mb-2">
-                                    🤖 AI Suggestion
-                                </MudText>
-                                <MudGrid>
-                                    <MudItem xs="12" sm="4">
-                                        <MudText Typo="Typo.caption">Suggested Fault Type</MudText>
-                                        <MudText Typo="Typo.body2">@aiSuggestion.SuggestedFaultType</MudText>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="4">
-                                        <MudText Typo="Typo.caption">Suggested Priority</MudText>
-                                        <MudText Typo="Typo.body2">@aiSuggestion.SuggestedPriority</MudText>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="4">
-                                        <MudText Typo="Typo.caption">Reasoning</MudText>
-                                        <MudText Typo="Typo.body2">@aiSuggestion.Reasoning</MudText>
-                                    </MudItem>
-                                </MudGrid>
-                                <MudStack Row="true" Class="mt-2">
-                                    <MudButton Variant="Variant.Filled"
-                                               Color="Color.Primary"
-                                               Size="Size.Small"
-                                               OnClick="AcceptAiSuggestion">
-                                        Accept
-                                    </MudButton>
-                                    <MudButton Variant="Variant.Text"
-                                               Size="Size.Small"
-                                               OnClick="@(() => aiSuggestion = null)">
-                                        Dismiss
-                                    </MudButton>
-                                </MudStack>
-                            </MudPaper>
-                        </MudItem>
-                    }
-                <MudItem xs="12" sm="6">
-                    <MudSelect T="int"
-                               @bind-Value="form.LocationId"
-                               Label="Location"
-                               Variant="Variant.Outlined">
-                        @foreach (var l in locationLookup)
-                        {
-                            <MudSelectItem T="int" Value="@l.Id">@l.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="form.Description"
-                                  Label="Description"
-                                  Variant="Variant.Outlined"
-                                  Lines="3" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudSelect T="int"
-                               @bind-Value="form.ReportedByEmployeeId"
-                               Label="Reported By"
-                               Variant="Variant.Outlined">
-                        @foreach (var e in employees)
-                        {
-                            <MudSelectItem T="int" Value="@e.Id">@e.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-            </MudGrid>
-
-            <MudStack Row="true" Class="mt-3">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           OnClick="SaveReport">
-                    Save
-                </MudButton>
-                <MudButton Variant="Variant.Outlined"
-                           OnClick="CloseForm">
-                    Cancel
-                </MudButton>
-            </MudStack>
-
-            @if (!string.IsNullOrWhiteSpace(message))
-            {
-                <MudAlert Severity="@messageSeverity" Class="mt-3">
-                    @message
-                </MudAlert>
-            }
-        </MudPaper>
-    }
-
     <MudPaper Class="pa-4 mb-4">
         <MudGrid>
             <MudItem xs="12" sm="4">
@@ -138,7 +39,9 @@ else
                            Clearable="true">
                     @foreach (var s in statuses)
                     {
-                        <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)s.Id)">
+                            @s.Name
+                        </MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -150,7 +53,9 @@ else
                            Clearable="true">
                     @foreach (var p in priorities)
                     {
-                        <MudSelectItem T="int?" Value="@((int?)p.Id)">@p.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)p.Id)">
+                            @p.Name
+                        </MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -162,7 +67,9 @@ else
                            Clearable="true">
                     @foreach (var l in locationLookup)
                     {
-                        <MudSelectItem T="int?" Value="@((int?)l.Id)">@l.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)l.Id)">
+                            @l.Name
+                        </MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -174,7 +81,9 @@ else
                            Clearable="true">
                     @foreach (var t in faultTypes)
                     {
-                        <MudSelectItem T="int?" Value="@((int?)t.Id)">@t.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)t.Id)">
+                            @t.Name
+                        </MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -202,7 +111,14 @@ else
     }
     else
     {
-        <MudTable Items="@reports" Hover="true" Striped="true" Dense="true">
+        <MudTable Items="@SortedReports"
+                  Hover="true"
+                  Striped="false"
+                  Dense="true"
+                  T="FaultReportDto"
+                  RowStyleFunc="@GetRowStyle"
+                  OnRowClick="@((TableRowClickEventArgs<FaultReportDto> args) =>
+                                    Navigation.NavigateTo($"/fault-reports/{args.Item.Id}"))">
             <HeaderContent>
                 <MudTh>Title</MudTh>
                 <MudTh>Location</MudTh>
@@ -212,34 +128,70 @@ else
                 <MudTh>Assigned To</MudTh>
                 <MudTh>Deadline</MudTh>
                 <MudTh>Created</MudTh>
-                <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd>@context.Title</MudTd>
-                <MudTd>@context.LocationName</MudTd>
-                <MudTd>@(context.FaultTypeName ?? "-")</MudTd>
                 <MudTd>
-                    <MudChip T="string"
-                             Color="@GetPriorityColor(context.FaultPriorityName)"
-                             Size="Size.Small">
-                        @(context.FaultPriorityName ?? "-")
-                    </MudChip>
+                    @context.Title
                 </MudTd>
                 <MudTd>
-                    <MudChip T="string"
-                             Color="@GetStatusColor(context.FaultStatusName)"
-                             Size="Size.Small">
-                        @context.FaultStatusName
-                    </MudChip>
+                    @context.LocationName
                 </MudTd>
-                <MudTd>@(context.ActiveTechnicianName ?? "-")</MudTd>
-                <MudTd>@(context.Deadline?.ToString("dd.MM.yyyy") ?? "-")</MudTd>
-                <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy")</MudTd>
+                <MudTd>         
+                    @(context.FaultTypeName ?? "-")
+                </MudTd>
                 <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                   Size="Size.Small"
-                                   OnClick="@(() => Navigation.NavigateTo(
-                                                                                              $"/fault-reports/{context.Id}"))" />
+                    @if (context.FaultPriorityName is not null &&
+                                             context.FaultStatusName != "Closed")
+                    {
+                        <MudChip T="string"
+                                 Color="@GetPriorityColor(context.FaultPriorityName)"
+                                 Size="Size.Small">
+                            @context.FaultPriorityName
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2">
+                            @(context.FaultPriorityName ?? "-")
+                        </MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    @if (context.FaultStatusName != "Closed")
+                    {
+                        <MudChip T="string"
+                                 Color="@GetStatusColor(context.FaultStatusName)"
+                                 Size="Size.Small">
+                            @context.FaultStatusName
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-disabled);">
+                            @context.FaultStatusName
+                        </MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    @(context.ActiveTechnicianName ?? "-")
+                </MudTd>
+                <MudTd>
+                    @if (context.Deadline.HasValue &&
+                                             context.Deadline < DateTime.UtcNow &&
+                                             context.FaultStatusName != "Closed" &&
+                                             context.FaultStatusName != "Resolved")
+                    {
+                        <MudText Style="color: var(--mud-palette-error); font-weight: 600;">
+                            @context.Deadline.Value.ToString("dd.MM.yyyy") ⚠
+                        </MudText>
+                    }
+                    else
+                    {
+                        @(context.Deadline?.ToString("dd.MM.yyyy") ?? "-")
+                    }
+                </MudTd>
+                <MudTd>
+                    @context.CreatedAt.ToString("dd.MM.yyyy")
                 </MudTd>
             </RowTemplate>
         </MudTable>
@@ -254,80 +206,32 @@ else
     private List<LookupDto> faultTypes = new();
     private List<LookupDto> employees = new();
     private FaultReportFilterDto filter = new();
-    private FaultReportCreateDto form = new();
     private bool isLoading = true;
-    private bool showForm = false;
-    private string? message;
-    private Severity messageSeverity = Severity.Success;
-    private AiSuggestionResult? aiSuggestion;
-    private System.Timers.Timer? _debounceTimer;
 
-    private void OnTitleInput(ChangeEventArgs e)
+    private IEnumerable<FaultReportDto> SortedReports => reports
+        .OrderBy(r => r.FaultStatusName == "Closed" ? 1 : 0)
+        .ThenBy(r => GetPriorityOrder(r.FaultPriorityName))
+        .ThenBy(r => r.Deadline.HasValue ? 0 : 1)
+        .ThenBy(r => r.Deadline ?? DateTime.MaxValue);
+
+    private int GetPriorityOrder(string? priority) => priority switch
     {
-        form.Title = e.Value?.ToString() ?? string.Empty;
+        "Critical" => 0,
+        "High" => 1,
+        "Medium" => 2,
+        "Low" => 3,
+        _ => 4
+    };
 
-        _debounceTimer?.Stop();
-        _debounceTimer?.Dispose();
-
-        if (form.Title.Length < 3)
-        {
-            aiSuggestion = null;
-            return;
-        }
-
-        _debounceTimer = new System.Timers.Timer(600);
-        _debounceTimer.Elapsed += async (_, _) =>
-        {
-            _debounceTimer?.Stop();
-            _debounceTimer?.Dispose();
-            _debounceTimer = null;
-
-            await InvokeAsync(async () =>
-            {
-                await GetAiSuggestion();
-                StateHasChanged();
-            });
-        };
-        _debounceTimer.Start();
-    }
-
-    public void Dispose()
+    private string GetRowStyle(FaultReportDto report, int index)
     {
-        _debounceTimer?.Stop();
-        _debounceTimer?.Dispose();
-    }
+        if (report.FaultStatusName == "Closed")
+            return "opacity: 0.5; font-style: italic;";
 
-    private async Task GetAiSuggestion()
-    {
-        if (string.IsNullOrWhiteSpace(form.Title) || form.Title.Length < 3)
-            return;
+        if (report.HasFailedIntervention)
+            return "background-color: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444;";
 
-        try
-        {
-            var response = await Http.PostAsJsonAsync("api/ai/suggest", form.Title);
-            if (response.IsSuccessStatusCode)
-            {
-                aiSuggestion = await response.Content
-                    .ReadFromJsonAsync<AiSuggestionResult>();
-            }
-        }
-        catch { }
-    }
-
-    private void AcceptAiSuggestion()
-    {
-        if (aiSuggestion is null) return;
-
-        // Pronađi FaultTypeId prema nazivu
-        var matchedType = faultTypes.FirstOrDefault(t =>
-            t.Name.Equals(aiSuggestion.SuggestedFaultType,
-                StringComparison.OrdinalIgnoreCase));
-
-        if (matchedType is not null)
-            form.FaultTypeId = matchedType.Id; // Trebaš dodati FaultTypeId u FaultReportCreateDto
-
-        aiSuggestion.IsConfirmed = true;
-        aiSuggestion = null;
+        return "";
     }
 
     protected override async Task OnInitializedAsync()
@@ -373,7 +277,6 @@ else
     private string BuildQueryString()
     {
         var parts = new List<string>();
-
         if (!string.IsNullOrWhiteSpace(filter.SearchText))
             parts.Add($"SearchText={Uri.EscapeDataString(filter.SearchText)}");
         if (filter.LocationId.HasValue)
@@ -384,7 +287,6 @@ else
             parts.Add($"FaultPriorityId={filter.FaultPriorityId}");
         if (filter.FaultStatusId.HasValue)
             parts.Add($"FaultStatusId={filter.FaultStatusId}");
-
         return string.Join("&", parts);
     }
 
@@ -394,66 +296,6 @@ else
     {
         filter = new FaultReportFilterDto();
         await LoadReports();
-    }
-
-    private void OpenCreateForm()
-    {
-        form = new FaultReportCreateDto();
-        message = null;
-        showForm = true;
-    }
-
-    private void CloseForm()
-    {
-        showForm = false;
-        message = null;
-    }
-
-    private async Task SaveReport()
-    {
-        if (string.IsNullOrWhiteSpace(form.Title))
-        {
-            message = "Title is required.";
-            messageSeverity = Severity.Error;
-            return;
-        }
-
-        if (form.LocationId == 0)
-        {
-            message = "Please select a location.";
-            messageSeverity = Severity.Error;
-            return;
-        }
-
-        if (form.ReportedByEmployeeId == 0)
-        {
-            message = "Please select an employee.";
-            messageSeverity = Severity.Error;
-            return;
-        }
-
-        try
-        {
-            var response = await Http.PostAsJsonAsync("api/faultreports", form);
-
-            if (response.IsSuccessStatusCode)
-            {
-                message = "Fault report created successfully.";
-                messageSeverity = Severity.Success;
-                showForm = false;
-                await LoadReports();
-            }
-            else
-            {
-                message = $"Error: {await response.Content.ReadAsStringAsync()}";
-                messageSeverity = Severity.Error;
-            }
-        }
-        catch (Exception ex)
-        {
-            message = $"Error: {ex.Message}";
-            messageSeverity = Severity.Error;
-        }
     }
 
     private Color GetPriorityColor(string? priority) => priority switch
@@ -469,6 +311,8 @@ else
         "Closed" => Color.Success,
         "Resolved" => Color.Info,
         "In Progress" => Color.Warning,
+        "Assigned" => Color.Secondary,
+        "Reviewed" => Color.Primary,
         _ => Color.Default
     };
 }

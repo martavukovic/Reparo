@@ -90,6 +90,9 @@ public class FaultReportsController : ControllerBase
             Deadline = f.Deadline,
             CreatedAt = f.CreatedAt,
             IsDeleted = f.IsDeleted,
+            HasFailedIntervention = f.Assignments
+                .SelectMany(a => a.Interventions)
+                .Any(i => i.InterventionStatus.Name == "Failed"),
             ActiveTechnicianName = f.Assignments
                 .Where(a => a.IsActive)
                 .Select(a => a.Technician.FirstName + " " + a.Technician.LastName)
@@ -295,7 +298,6 @@ public class FaultReportsController : ControllerBase
 
         var events = new List<TimelineEventDto>();
 
-        // Kreiranje prijave
         events.Add(new TimelineEventDto
         {
             Timestamp = report.CreatedAt,
@@ -307,7 +309,6 @@ public class FaultReportsController : ControllerBase
             Icon = "BugReport"
         });
 
-        // Attachmenti
         foreach (var att in report.Attachments.OrderBy(a => a.UploadedAt))
         {
             events.Add(new TimelineEventDto
@@ -321,7 +322,6 @@ public class FaultReportsController : ControllerBase
             });
         }
 
-        // Dodjele i intervencije
         foreach (var assignment in report.Assignments.OrderBy(a => a.AssignedAt))
         {
             events.Add(new TimelineEventDto
@@ -368,5 +368,21 @@ public class FaultReportsController : ControllerBase
             }
         }
         return Ok(events.OrderBy(e => e.Timestamp).ToList());
+    }
+
+    [HttpPut("{id}/edit")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<ActionResult> Edit(int id, FaultReportCreateDto dto)
+    {
+        var report = await _context.FaultReports.FindAsync(id);
+
+        if (report is null || report.IsDeleted)
+            return NotFound();
+
+        report.Title = dto.Title;
+        report.Description = dto.Description;
+
+        await _context.SaveChangesAsync();
+        return NoContent();
     }
 }

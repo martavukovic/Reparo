@@ -22,6 +22,13 @@ public class AuthHeaderHandler : DelegatingHandler
                     "Bearer", _currentUser.User.Token);
         }
 
-        return await base.SendAsync(request, cancellationToken);
+        try
+        {
+            return await base.SendAsync(request, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return new HttpResponseMessage(System.Net.HttpStatusCode.RequestTimeout);
+        }
     }
 }

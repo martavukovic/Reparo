@@ -47,16 +47,22 @@ public sealed class MockAiService : IAiService
         var status = Get("Status");
         var type = Get("Type");
         var deadline = Get("Deadline");
-        var interventions = Get("Interventions");
+        var interventionsText = Get("Interventions");
+        var durationText = Get("Total duration");
         var materials = Get("Materials used");
 
-        var urgency = priority == "Critical" ? "urgent " : priority == "High" ? "high-priority " : "";
+        var urgency = priority == "Critical" ? "urgent "
+                    : priority == "High" ? "high-priority "
+                    : "";
 
         return $"[Mock AI] The {urgency}fault report \"{title}\" was submitted for {location}. " +
                $"Fault type: {type}, current status: {status}." +
-               (deadline != "None" ? $" Deadline: {deadline}." : "") +
-               $" Interventions: {interventions}." +
-               (materials != "None" ? $" Materials used: {materials}." : " No materials used.");
+               (deadline != "None" && deadline != "-" ? $" Deadline: {deadline}." : "") +
+               $" Interventions: {interventionsText}." +
+               (durationText != "-" ? $" Total work duration: {durationText}." : "") +
+               (materials != "None" && materials != "-"
+                   ? $" Materials used: {materials}."
+                   : " No materials used.");
     }
 
     private static AiSuggestionResult GenerateFaultSuggestion(string title)

@@ -77,26 +77,37 @@ public class AiController : ControllerBase
             .SelectMany(a => a.Interventions)
             .ToList();
 
+        var totalMinutes = interventions
+            .Where(i => i.DurationMinutes.HasValue)
+            .Sum(i => i.DurationMinutes!.Value);
+
         var materials = interventions
             .SelectMany(i => i.Materials)
             .Select(m => $"{m.Material?.Name} x{m.Quantity}")
             .ToList();
 
-        var input = $"""
-        Title: {report.Title}
-        Description: {report.Description}
-        Location: {report.Location?.Name}
-        Reported by: {report.ReportedByEmployee?.FirstName} {report.ReportedByEmployee?.LastName}
-        Type: {report.FaultType?.Name ?? "Unknown"}
-        Priority: {report.FaultPriority?.Name ?? "Unknown"}
-        Status: {report.FaultStatus?.Name}
-        Created: {report.CreatedAt:dd.MM.yyyy}
-        Deadline: {(report.Deadline.HasValue ? report.Deadline.Value.ToString("dd.MM.yyyy") : "None")}
-        Interventions: {interventions.Count} total, {interventions.Count(i => i.InterventionStatus?.Name == "Completed")} completed, {interventions.Count(i => i.InterventionStatus?.Name == "Failed")} failed
-        Materials used: {(materials.Any() ? string.Join(", ", materials) : "None")}
-        """;
+        var summaryInput = string.Join("\n", new[]
+        {
+        $"Title: {report.Title}",
+        $"Description: {report.Description}",
+        $"Location: {report.Location?.Name}",
+        $"Reported by: {report.ReportedByEmployee?.FirstName} {report.ReportedByEmployee?.LastName}",
+        $"Type: {report.FaultType?.Name ?? "Unknown"}",
+        $"Priority: {report.FaultPriority?.Name ?? "Unknown"}",
+        $"Status: {report.FaultStatus?.Name}",
+        $"Created: {report.CreatedAt:dd.MM.yyyy}",
+        $"Deadline: {(report.Deadline.HasValue ? report.Deadline.Value.ToString("dd.MM.yyyy") : "None")}",
+        $"Interventions: {interventions.Count} total, {interventions.Count(i => i.InterventionStatus?.Name == "Completed")} completed, {interventions.Count(i => i.InterventionStatus?.Name == "Failed")} failed",
+        $"Total duration: {(totalMinutes > 0 ? $"{totalMinutes} minutes" : "-")}",
+        $"Materials used: {(materials.Any() ? string.Join(", ", materials) : "None")}"
+    });
 
-        var summary = await _aiService.GenerateTextAsync("fault-summary", input);
+        var summary = await _aiService.GenerateTextAsync("fault-summary", summaryInput);
+
+        report.AiSummary = summary;
+        report.AiSummaryGeneratedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
         return Ok(summary);
     }
 }

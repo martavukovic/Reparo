@@ -139,7 +139,9 @@ public class FaultReportsController : ControllerBase
             ActiveTechnicianName = f.Assignments
                 .Where(a => a.IsActive)
                 .Select(a => a.Technician.FirstName + " " + a.Technician.LastName)
-                .FirstOrDefault()
+                .FirstOrDefault(),
+            AiSummary = f.AiSummary,
+            AiSummaryGeneratedAt = f.AiSummaryGeneratedAt
         });
     }
 

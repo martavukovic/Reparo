@@ -26,7 +26,8 @@ public class FaultReport
     public DateTime? Deadline { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public bool IsDeleted { get; set; } = false;
-
+    public string? AiSummary { get; set; }
+    public DateTime? AiSummaryGeneratedAt { get; set; }
     public ICollection<WorkAssignment> Assignments { get; set; } = new List<WorkAssignment>();
     public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
 }

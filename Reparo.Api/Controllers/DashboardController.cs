@@ -109,8 +109,12 @@ public class DashboardController : ControllerBase
                     && !f.IsDeleted);
 
             myAssignmentsCount = await _context.WorkAssignments
+                .Include(a => a.FaultReport)
+                    .ThenInclude(f => f.FaultStatus)
                 .CountAsync(a => a.TechnicianId == user.EmployeeId
-                    && a.IsActive);
+                    && a.IsActive
+                    && a.FaultReport.FaultStatus.Name != "Resolved"
+                    && a.FaultReport.FaultStatus.Name != "Closed");
         }
 
         return Ok(new DashboardDto
@@ -124,8 +128,9 @@ public class DashboardController : ControllerBase
                     !f.Assignments.Any(a => a.IsActive))
                 .CountAsync(),
             TotalActiveInterventions = await _context.Interventions
-                .Include(i => i.InterventionStatus)
-                .CountAsync(i => i.InterventionStatus.Name == "In Progress"),
+    .Include(i => i.InterventionStatus)
+    .CountAsync(i => i.InterventionStatus.Name == "Planned" ||
+                     i.InterventionStatus.Name == "In Progress"),
             AverageResolutionDays = Math.Round(avgResolution, 1),
             LastFiveReports = lastFive,
             MyReportsCount = myReportsCount,

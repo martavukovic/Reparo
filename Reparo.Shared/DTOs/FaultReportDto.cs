@@ -20,6 +20,8 @@ public class FaultReportDto
     public bool IsDeleted { get; set; }
     public bool HasFailedIntervention { get; set; }
     public string? ActiveTechnicianName { get; set; }
+    public string? AiSummary { get; set; }
+    public DateTime? AiSummaryGeneratedAt { get; set; }
 }
 
 public class FaultReportCreateDto

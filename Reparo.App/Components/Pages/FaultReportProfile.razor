@@ -441,33 +441,35 @@ else
                     </MudAlert>
                 }
 
-                @* AI Summary — na dnu *@
                 <MudPaper Class="pa-4">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
                         <MudIcon Icon="@Icons.Material.Filled.AutoAwesome"
                                  Size="Size.Small"
                                  Class="mr-1"
                                  Style="color: #7c4dff;" />
-                        <MudText Typo="Typo.subtitle1"
-                                 Style="font-weight: 600;">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">
                             AI Summary
                         </MudText>
                     </MudStack>
                     @if (aiSummary is not null)
                     {
-                        <MudText Typo="Typo.body2"
-                                 Class="mb-3"
-                                 Style="line-height: 1.6;">
+                        <MudText Typo="Typo.body2" Class="mb-1" Style="line-height: 1.6;">
                             @aiSummary
                         </MudText>
+                        @if (report?.AiSummaryGeneratedAt is not null)
+                        {
+                            <MudText Typo="Typo.caption"
+                                     Style="color: var(--mud-palette-text-secondary);"
+                                     Class="mb-3">
+                                Generated @report.AiSummaryGeneratedAt.Value.ToString("dd.MM.yyyy HH:mm")
+                            </MudText>
+                        }
                     }
                     else
                     {
-                        <MudText Typo="Typo.body2"
-                                 Class="mb-3"
+                        <MudText Typo="Typo.body2" Class="mb-3"
                                  Style="color: var(--mud-palette-text-secondary);">
-                            Generate an AI summary of this report including
-                            interventions and materials used.
+                            Generate an AI summary of this report.
                         </MudText>
                     }
                     <MudButton Variant="Variant.Outlined"
@@ -475,7 +477,8 @@ else
                                Disabled="isLoadingSummary"
                                StartIcon="@Icons.Material.Filled.AutoAwesome"
                                OnClick="GetAiSummary">
-                        @(isLoadingSummary ? "Generating..." : "Generate Summary")
+                        @(isLoadingSummary ? "Generating..." :
+                          aiSummary is not null ? "Regenerate Summary" : "Generate Summary")
                     </MudButton>
                 </MudPaper>
 
@@ -550,6 +553,9 @@ else
                 editTitle = report.Title;
                 editDescription = report.Description;
             }
+
+            if (report is not null && report.AiSummary is not null)
+                 aiSummary = report.AiSummary;
 
             if (CurrentUser.HasAnyRole("Admin", "Manager"))
             {

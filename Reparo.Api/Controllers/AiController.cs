@@ -83,7 +83,11 @@ public class AiController : ControllerBase
 
         var materials = interventions
             .SelectMany(i => i.Materials)
-            .Select(m => $"{m.Material?.Name} x{m.Quantity}")
+            .GroupBy(m => new {
+                MaterialName = m.Material?.Name,
+                UnitName = m.MaterialUnit?.Name
+            })
+            .Select(g => $"{g.Key.MaterialName}: {g.Sum(m => m.Quantity)} {g.Key.UnitName}")
             .ToList();
 
         var summaryInput = string.Join("\n", new[]

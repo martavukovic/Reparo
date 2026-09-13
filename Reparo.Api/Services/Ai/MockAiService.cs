@@ -14,7 +14,7 @@ public sealed class MockAiService : IAiService
         var result = purpose switch
         {
             "fault-summary" => GenerateFaultSummary(input),
-            _ => $"[Mock AI] Response for: {input}"
+            _ => $"Response for: {input}"
         };
 
         return Task.FromResult(result);
@@ -55,14 +55,38 @@ public sealed class MockAiService : IAiService
                     : priority == "High" ? "high-priority "
                     : "";
 
-        return $"[Mock AI] The {urgency}fault report \"{title}\" was submitted for {location}. " +
-               $"Fault type: {type}, current status: {status}." +
-               (deadline != "None" && deadline != "-" ? $" Deadline: {deadline}." : "") +
-               $" Interventions: {interventionsText}." +
-               (durationText != "-" ? $" Total work duration: {durationText}." : "") +
-               (materials != "None" && materials != "-"
-                   ? $" Materials used: {materials}."
-                   : " No materials used.");
+        var durationFormatted = "-";
+        if (durationText != "-" && int.TryParse(
+            durationText.Replace("minutes", "").Trim(), out var minutes))
+        {
+            var days = minutes / (60 * 24);
+            var hours = (minutes % (60 * 24)) / 60;
+            var mins = minutes % 60;
+
+            if (days > 0)
+                durationFormatted = $"{days}d {hours}h {mins}min";
+            else if (hours > 0)
+                durationFormatted = $"{hours}h {mins}min";
+            else
+                durationFormatted = $"{mins}min";
+        }
+
+        var summary = $"The {urgency}fault report \"{title}\" was submitted for {location}. " +
+                      $"Fault type: {type}, current status: {status}.";
+
+        if (deadline != "None" && deadline != "-")
+            summary += $" Deadline: {deadline}.";
+
+        summary += $" Interventions: {interventionsText}.";
+
+        if (durationFormatted != "-")
+            summary += $" Total work duration: {durationFormatted}.";
+
+        summary += materials != "None" && materials != "-"
+            ? $" Materials used: {materials}."
+            : " No materials used.";
+
+        return summary;
     }
 
     private static AiSuggestionResult GenerateFaultSuggestion(string title)
@@ -77,7 +101,6 @@ public sealed class MockAiService : IAiService
             Reasoning = "Could not determine fault type from title."
         };
 
-        // Tip kvara
         if (ContainsAny(t, "light", "bulb", "electric", "power", "socket",
             "fuse", "circuit", "switch", "wiring", "voltage", "blackout"))
         {
@@ -114,17 +137,22 @@ public sealed class MockAiService : IAiService
             result.SuggestedPriority = "Low";
             result.Reasoning = "Construction keywords detected.";
         }
+        else if (ContainsAny(t, "fire", "smoke", "gas", "explosion", "collapse",
+            "chemical", "sewage", "mold", "structural"))
+        {
+            result.SuggestedFaultType = "Other";
+            result.SuggestedPriority = "Critical";
+            result.Reasoning = "Potentially dangerous situation detected.";
+        }
 
-        // Kritični override
-        if (ContainsAny(t, "fire", "smoke", "gas", "explosion", "collapse",
-            "chemical", "urgent", "emergency", "critical", "danger",
-            "hazard", "toxic", "injury", "flood", "mold", "structural"))
+        if (ContainsAny(t, "urgent", "emergency", "critical", "danger",
+            "hazard", "toxic", "injury", "flood", "fire", "smoke", "gas"))
         {
             result.SuggestedPriority = "Critical";
-            result.Reasoning += " Dangerous keywords detected — Critical priority assigned.";
+            result.Reasoning += " Urgent keywords detected — Critical priority assigned.";
         }
-        else if (ContainsAny(t, "no power", "no water", "no heat", "no internet",
-            "not working", "failed", "major", "serious", "smell", "loud noise"))
+        else if (ContainsAny(t, "not working", "failed", "major", "serious",
+            "no power", "no water", "no heat", "broken", "burst"))
         {
             if (result.SuggestedPriority == "Low")
                 result.SuggestedPriority = "High";

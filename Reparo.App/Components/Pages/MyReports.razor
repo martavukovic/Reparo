@@ -1,10 +1,13 @@
 ﻿@page "/my-reports"
+@inject NavigationManager Navigation
+@using Reparo.Shared.DTOs
 @inject HttpClient Http
 @inject CurrentUserService CurrentUser
 
 <PageTitle>My Reports - Reparo</PageTitle>
 
 <MudText Typo="Typo.h4" Class="mb-4">My Reports</MudText>
+
 
 @if (!CurrentUser.HasAnyRole("Reporter", "Admin"))
 {
@@ -15,76 +18,11 @@ else
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
                Class="mb-4"
-               OnClick="OpenCreateForm"
-               Disabled="showForm">
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="@(() => Navigation.NavigateTo("/fault-reports/create"))">
         New Report
     </MudButton>
 
-    @if (showForm)
-    {
-        <MudPaper Class="pa-4 mb-4">
-            <MudText Typo="Typo.h6" Class="mb-3">New Fault Report</MudText>
-
-            <MudGrid>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="form.Title"
-                                  Label="Title"
-                                  Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudSelect T="int"
-                               @bind-Value="form.LocationId"
-                               Label="Location"
-                               Variant="Variant.Outlined">
-                        @foreach (var l in locations)
-                        {
-                            <MudSelectItem T="int" Value="@l.Id">@l.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="form.Description"
-                                  Label="Description"
-                                  Variant="Variant.Outlined"
-                                  Lines="3" />
-                </MudItem>
-                <MudItem xs="12">
-                    <MudDivider Class="mb-3" />
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">
-                        Photo Before Work (optional)
-                    </MudText>
-                    <InputFile OnChange="HandleFileSelected"
-                               accept="image/jpeg,image/png,image/webp,application/pdf" />
-                    @if (selectedFile is not null)
-                    {
-                        <MudText Typo="Typo.body2" Class="mt-2">
-                            Selected: @selectedFile.Name
-                            (@($"{selectedFile.Size / 1024:N0} KB"))
-                        </MudText>
-                    }
-                </MudItem>
-            </MudGrid>
-
-            <MudStack Row="true" Class="mt-4">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           OnClick="SaveReport"
-                           Disabled="isSaving">
-                    @(isSaving ? "Submitting..." : "Submit")
-                </MudButton>
-                <MudButton Variant="Variant.Outlined"
-                           OnClick="@(() => { showForm = false; selectedFile = null; })">
-                    Cancel
-                </MudButton>
-            </MudStack>
-
-            @if (!string.IsNullOrWhiteSpace(message))
-            {
-                <MudAlert Severity="@messageSeverity" Class="mt-3">
-                    @message
-                </MudAlert>
-            }
-        </MudPaper>
     }
 
     @if (isLoading)
@@ -124,18 +62,18 @@ else
             </RowTemplate>
         </MudTable>
     }
-}
 
 @code {
     private List<FaultReportDto> reports = new();
-    private List<LookupDto> locations = new();
     private FaultReportCreateDto form = new();
     private IBrowserFile? selectedFile;
     private bool isLoading = true;
-    private bool showForm = false;
     private bool isSaving = false;
+    private bool showForm = false;
+    private string reporterLocationName = string.Empty;
     private string? message;
     private Severity messageSeverity = Severity.Success;
+    private int reporterLocationId = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -144,11 +82,26 @@ else
 
     private async Task LoadData()
     {
+        Console.WriteLine($"EmployeeId: {CurrentUser.User?.EmployeeId}");
         isLoading = true;
         try
         {
-            locations = await Http.GetFromJsonAsync<List<LookupDto>>(
-                "api/locations/lookup") ?? new();
+            if (CurrentUser.User?.EmployeeId is not null)
+            {
+                try
+                {
+                    var emp = await Http.GetFromJsonAsync<EmployeeDto>(
+                        $"api/employees/{CurrentUser.User.EmployeeId}");
+
+                    if (emp is not null)
+                    {
+                        reporterLocationId = emp.LocationId;
+                        reporterLocationName = emp.LocationName;
+                    }
+                }
+                catch { }
+            }
+
             try
             {
                 reports = await Http.GetFromJsonAsync<List<FaultReportDto>>(
@@ -162,19 +115,31 @@ else
 
     private void OpenCreateForm()
     {
-        form = new FaultReportCreateDto();
+        Console.WriteLine($"EmployeeId: {CurrentUser.User?.EmployeeId}");
+        Console.WriteLine($"LocationId: {reporterLocationId}");
+        Console.WriteLine($"LocationName: {reporterLocationName}");
+    
+        form = new FaultReportCreateDto
+        {
+            LocationId = reporterLocationId,
+            ReportedByEmployeeId = CurrentUser.User?.EmployeeId ?? 0
+        };
         selectedFile = null;
-
-        if (CurrentUser.User?.EmployeeId is not null)
-            form.ReportedByEmployeeId = CurrentUser.User.EmployeeId.Value;
-
+        message = null;
+        showForm = true;
+        form = new FaultReportCreateDto
+        {
+            LocationId = reporterLocationId,
+            ReportedByEmployeeId = CurrentUser.User?.EmployeeId ?? 0
+        };
+        selectedFile = null;
         message = null;
         showForm = true;
     }
 
-    private void HandleFileSelected(InputFileChangeEventArgs e)
+    private int GetReporterLocationId()
     {
-        selectedFile = e.File;
+        return form.LocationId;
     }
 
     private async Task SaveReport()
@@ -188,7 +153,7 @@ else
 
         if (form.LocationId == 0)
         {
-            message = "Please select a location.";
+            message = "Location not set. Please contact admin.";
             messageSeverity = Severity.Error;
             return;
         }
@@ -204,39 +169,38 @@ else
 
         try
         {
-            // Korak 1 - kreiraj prijavu
             var response = await Http.PostAsJsonAsync("api/faultreports", form);
 
-            if (!response.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<FaultReportDto>();
+
+                if (selectedFile is not null && created?.Id is not null)
+                {
+                    using var content = new MultipartFormDataContent();
+                    var fileContent = new StreamContent(
+                        selectedFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
+                    fileContent.Headers.ContentType =
+                        new System.Net.Http.Headers.MediaTypeHeaderValue(
+                            selectedFile.ContentType);
+
+                    content.Add(new StringContent(created.Id.ToString()), "faultReportId");
+                    content.Add(new StringContent("Photo Before Work"), "purpose");
+                    content.Add(fileContent, "file", selectedFile.Name);
+
+                    await Http.PostAsync("api/attachments", content);
+                }
+
+                showForm = false;
+                selectedFile = null;
+                message = null;
+                await LoadData();
+            }
+            else
             {
                 message = $"Error: {await response.Content.ReadAsStringAsync()}";
                 messageSeverity = Severity.Error;
-                return;
             }
-
-            var created = await response.Content.ReadFromJsonAsync<FaultReportDto>();
-
-            // Korak 2 - uploadi sliku ako je odabrana
-            if (selectedFile is not null && created?.Id is not null)
-            {
-                using var content = new MultipartFormDataContent();
-                var fileContent = new StreamContent(
-                    selectedFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
-                fileContent.Headers.ContentType =
-                    new System.Net.Http.Headers.MediaTypeHeaderValue(
-                        selectedFile.ContentType);
-
-                content.Add(new StringContent(created.Id.ToString()), "faultReportId");
-                content.Add(new StringContent("Photo Before Work"), "purpose");
-                content.Add(fileContent, "file", selectedFile.Name);
-
-                await Http.PostAsync("api/attachments", content);
-            }
-
-            showForm = false;
-            selectedFile = null;
-            message = null;
-            await LoadData();
         }
         catch (Exception ex)
         {
@@ -256,4 +220,9 @@ else
         "In Progress" => Color.Warning,
         _ => Color.Default
     };
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
 }

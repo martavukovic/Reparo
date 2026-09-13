@@ -9,7 +9,7 @@ namespace Reparo.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Manager")]
+[Authorize]
 public class EmployeesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -41,6 +41,7 @@ public class EmployeesController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = "Admin,Manager,Reporter,Technician")]
     public async Task<ActionResult<EmployeeDto>> GetById(int id)
     {
         var employee = await _context.Employees

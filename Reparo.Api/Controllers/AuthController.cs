@@ -30,13 +30,13 @@ public class AuthController : ControllerBase
         var user = await _userManager.FindByEmailAsync(request.Email);
 
         if (user is null)
-            return Unauthorized("Pogrešan email ili lozinka.");
+            return Unauthorized("Wrong email or password.");
 
         var result = await _signInManager.CheckPasswordSignInAsync(
             user, request.Password, false);
 
         if (!result.Succeeded)
-            return Unauthorized("Pogrešan email ili lozinka.");
+            return Unauthorized("Wrong email or password.");
 
         var roles = await _userManager.GetRolesAsync(user);
         var token = _jwtService.GenerateToken(user, roles);

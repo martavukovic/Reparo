@@ -1,112 +1,157 @@
-﻿@inject HttpClient Http
-@inject CurrentUserService CurrentUser
+﻿@using MudBlazor
+@using Reparo.Shared.DTOs
+@using Reparo.App.Services
+@inject HttpClient Http
+@inject IDialogService DialogService
 
-<MudDialogContent>
-    @* Materijali *@
-    <MudText Typo="Typo.subtitle2" Class="mb-2">Materials Used</MudText>
-    @if (Intervention.Materials.Any())
-    {
-        @foreach (var mat in Intervention.Materials)
+<MudDialogContent Style="padding: 32px;">
+    <MudStack Spacing="4">
+
+        @* Lista materijala *@
+        @if (materialForms.Any() || Intervention.Materials.Any())
         {
-            <MudText Typo="Typo.body2" Class="mb-1">
-                • @mat.MaterialName — @mat.Quantity @mat.MaterialUnitName
-            </MudText>
-        }
-    }
-    else
-    {
-        <MudText Typo="Typo.body2"
-                 Style="color: var(--mud-palette-text-secondary);"
-                 Class="mb-2">
-            No materials added yet.
-        </MudText>
-    }
+            <div>
+                <MudText Typo="Typo.subtitle1"
+                         Style="font-weight: 600;"
+                         GutterBottom="true">
+                    Materials
+                </MudText>
 
-    <MudDivider Class="my-3" />
-
-    <MudText Typo="Typo.subtitle2" Class="mb-2">Add Material</MudText>
-    <MudGrid>
-        <MudItem xs="12" sm="5">
-            <MudTextField @bind-Value="materialName"
-                          Label="Material Name"
-                          Variant="Variant.Outlined"
-                          Placeholder="e.g. Cable 2.5mm" />
-        </MudItem>
-        <MudItem xs="12" sm="2">
-            <MudNumericField @bind-Value="materialQuantity"
-                             Label="Qty"
-                             Variant="Variant.Outlined"
-                             Min="0.01m" />
-        </MudItem>
-        <MudItem xs="12" sm="3">
-            <MudSelect T="int"
-                       @bind-Value="materialUnitId"
-                       Label="Unit"
-                       Variant="Variant.Outlined">
-                @foreach (var u in MaterialUnits)
+                @* Već dodani materijali *@
+                @foreach (var mat in Intervention.Materials)
                 {
-                    <MudSelectItem T="int" Value="@u.Id">@u.Name</MudSelectItem>
+                    <MudStack Row="true" AlignItems="AlignItems.Center"
+                              Spacing="2" Class="mb-1">
+                        <MudIcon Icon="@Icons.Material.Filled.FiberManualRecord"
+                                 Size="Size.Small"
+                                 Color="Color.Primary"
+                                 Style="font-size: 8px;" />
+                        <MudText Typo="Typo.body2">
+                            @mat.MaterialName —
+                            <strong>@mat.Quantity @mat.MaterialUnitName</strong>
+                        </MudText>
+                    </MudStack>
                 }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="2" Class="d-flex align-center">
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       Size="Size.Small"
-                       OnClick="AddMaterial">
-                Add
-            </MudButton>
-        </MudItem>
-    </MudGrid>
 
-    @if (!string.IsNullOrWhiteSpace(error))
-    {
-        <MudAlert Severity="Severity.Error" Class="mt-2">@error</MudAlert>
-    }
+                @* Forme za novi materijal *@
+                @for (int i = 0; i < materialForms.Count; i++)
+                {
+                    var index = i;
+                    var form = materialForms[index];
+                    <MudPaper Outlined="true" Class="pa-3 mb-2">
+                        <MudGrid>
+                            <MudItem xs="12" sm="5">
+                                <MudTextField @bind-Value="form.Name"
+                                              Label="Material Name"
+                                              Variant="Variant.Outlined"
+                                              Placeholder="e.g. Cable 2.5mm" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudNumericField @bind-Value="form.Quantity"
+                                                 Label="Quantity"
+                                                 Variant="Variant.Outlined"
+                                                 Min="0.01m" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudSelect T="int"
+                                           @bind-Value="form.UnitId"
+                                           Label="Unit"
+                                           Variant="Variant.Outlined">
+                                    <MudSelectItem T="int" Value="0" Disabled="true">
+                                        Select...
+                                    </MudSelectItem>
+                                    @foreach (var u in MaterialUnits)
+                                    {
+                                        <MudSelectItem T="int" Value="@u.Id">
+                                            @u.Name
+                                        </MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="12" sm="1"
+                                     Class="d-flex align-center justify-end">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="@(() => materialForms.RemoveAt(index))" />
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                }
+            </div>
+        }
 
-    <MudDivider Class="my-3" />
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="AddMaterialForm">
+            Add Material
+        </MudButton>
 
-    <MudText Typo="Typo.subtitle2" Class="mb-2">Finish Intervention</MudText>
-    <MudGrid>
-        <MudItem xs="12" sm="6">
-            <MudDatePicker @bind-Date="startDate"
-                           Label="Start Date"
-                           Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12" sm="6">
-            <MudTimePicker @bind-Time="startTime"
-                           Label="Start Time"
-                           Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12" sm="6">
-            <MudDatePicker @bind-Date="endDate"
-                           Label="End Date"
-                           Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12" sm="6">
-            <MudTimePicker @bind-Time="endTime"
-                           Label="End Time"
-                           Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs="12">
-            <MudTextField @bind-Value="finishNote"
-                          Label="Note"
-                          Variant="Variant.Outlined"
-                          Lines="2"
-                          HelperText="Required" />
-        </MudItem>
-    </MudGrid>
+        <MudDivider />
+
+        @* Finish *@
+        <div>
+            <MudText Typo="Typo.subtitle1"
+                     Style="font-weight: 600;"
+                     GutterBottom="true">
+                Finish Intervention
+            </MudText>
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudDatePicker @bind-Date="startDate"
+                                   Label="Start Date"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTimePicker @bind-Time="startTime"
+                                   Label="Start Time"
+                                   Variant="Variant.Outlined"
+                                   AmPm="false" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker @bind-Date="endDate"
+                                   Label="End Date"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTimePicker @bind-Time="endTime"
+                                   Label="End Time"
+                                   Variant="Variant.Outlined"
+                                   AmPm="false" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="finishNote"
+                                  Label="Note"
+                                  Variant="Variant.Outlined"
+                                  Lines="2"
+                                  HelperText="Required — describe what was done" />
+                </MudItem>
+            </MudGrid>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <MudAlert Severity="Severity.Error">@error</MudAlert>
+        }
+
+    </MudStack>
 </MudDialogContent>
 
-<MudDialogActions>
-    <MudButton OnClick="Cancel">Close</MudButton>
+<MudDialogActions Style="padding: 16px 32px 24px 32px;">
+    <MudButton OnClick="Cancel" Variant="Variant.Text">Close</MudButton>
+    <MudSpacer />
     <MudButton Variant="Variant.Filled"
                Color="Color.Error"
-               OnClick="@(() => Finish(false))">
+               StartIcon="@Icons.Material.Filled.Cancel"
+               Class="mr-2"
+               OnClick="ConfirmMarkAsFailed">
         Mark as Failed
     </MudButton>
     <MudButton Variant="Variant.Filled"
                Color="Color.Success"
+               StartIcon="@Icons.Material.Filled.CheckCircle"
                OnClick="@(() => Finish(true))">
         Complete Successfully
     </MudButton>
@@ -119,9 +164,14 @@
     [Parameter] public List<LookupDto> MaterialUnits { get; set; } = new();
     [Parameter] public EventCallback OnMaterialAdded { get; set; }
 
-    private string materialName = string.Empty;
-    private decimal materialQuantity = 1;
-    private int materialUnitId = 0;
+    private class MaterialForm
+    {
+        public string Name { get; set; } = string.Empty;
+        public decimal Quantity { get; set; } = 1;
+        public int UnitId { get; set; } = 0;
+    }
+
+    private List<MaterialForm> materialForms = new();
     private DateTime? startDate = DateTime.Today;
     private TimeSpan? startTime;
     private DateTime? endDate = DateTime.Today;
@@ -129,84 +179,35 @@
     private string finishNote = string.Empty;
     private string? error;
 
-    private async Task AddMaterial()
+    private void AddMaterialForm()
     {
-        error = null;
+        materialForms.Add(new MaterialForm());
+    }
 
-        if (string.IsNullOrWhiteSpace(materialName))
+    private async Task ConfirmMarkAsFailed()
+    {
+        var parameters = new DialogParameters
         {
-            error = "Material name is required.";
-            return;
-        }
-        if (materialQuantity <= 0)
+            ["Message"] = "Are you sure you want to mark this intervention as failed?",
+            ["ConfirmText"] = "Mark as Failed",
+            ["ConfirmColor"] = Color.Error
+        };
+
+        var options = new DialogOptions
         {
-            error = "Quantity must be greater than zero.";
-            return;
-        }
-        if (materialUnitId == 0)
-        {
-            error = "Please select a unit.";
-            return;
-        }
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.ExtraSmall,
+            FullWidth = true,
+            BackdropClick = true
+        };
 
-        try
-        {
-            var materialsLookup = await Http.GetFromJsonAsync<List<LookupDto>>(
-                "api/lookups/materials") ?? new();
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(
+            "Confirm", parameters, options);
 
-            var existing = materialsLookup.FirstOrDefault(m =>
-                m.Name.Equals(materialName, StringComparison.OrdinalIgnoreCase));
+        var result = await dialog.Result;
 
-            int materialId;
-
-            if (existing is not null)
-            {
-                materialId = existing.Id;
-            }
-            else
-            {
-                var createResponse = await Http.PostAsJsonAsync("api/materials",
-                    new CreateMaterialDto { Name = materialName });
-
-                if (!createResponse.IsSuccessStatusCode)
-                {
-                    error = "Error creating material.";
-                    return;
-                }
-
-                var newMaterial = await createResponse.Content
-                    .ReadFromJsonAsync<LookupDto>();
-                materialId = newMaterial!.Id;
-            }
-
-            var dto = new InterventionMaterialCreateDto
-            {
-                InterventionId = Intervention.Id,
-                MaterialId = materialId,
-                Quantity = materialQuantity,
-                MaterialUnitId = materialUnitId
-            };
-
-            var response = await Http.PostAsJsonAsync(
-                $"api/interventions/{Intervention.Id}/materials", dto);
-
-            if (response.IsSuccessStatusCode)
-            {
-                materialName = string.Empty;
-                materialQuantity = 1;
-                materialUnitId = 0;
-                error = null;
-                await OnMaterialAdded.InvokeAsync();
-            }
-            else
-            {
-                error = await response.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            error = $"Error: {ex.Message}";
-        }
+        if (result is not null && !result.Canceled)
+            await Finish(false);
     }
 
     private async Task Finish(bool successful)
@@ -235,7 +236,54 @@
             return;
         }
 
-        var dto = new InterventionFinishDto
+        // Spremi materijale
+        foreach (var form in materialForms)
+        {
+            if (string.IsNullOrWhiteSpace(form.Name) || form.UnitId == 0)
+                continue;
+
+            try
+            {
+                var materialsLookup = await Http.GetFromJsonAsync<List<LookupDto>>(
+                    "api/lookups/materials") ?? new();
+
+                var existing = materialsLookup.FirstOrDefault(m =>
+                    m.Name.Equals(form.Name, StringComparison.OrdinalIgnoreCase));
+
+                int materialId;
+
+                if (existing is not null)
+                {
+                    materialId = existing.Id;
+                }
+                else
+                {
+                    var createResponse = await Http.PostAsJsonAsync("api/materials",
+                        new CreateMaterialDto { Name = form.Name });
+
+                    if (!createResponse.IsSuccessStatusCode) continue;
+
+                    var newMaterial = await createResponse.Content
+                        .ReadFromJsonAsync<LookupDto>();
+                    materialId = newMaterial!.Id;
+                }
+
+                var dto = new InterventionMaterialCreateDto
+                {
+                    InterventionId = Intervention.Id,
+                    MaterialId = materialId,
+                    Quantity = form.Quantity,
+                    MaterialUnitId = form.UnitId
+                };
+
+                await Http.PostAsJsonAsync(
+                    $"api/interventions/{Intervention.Id}/materials", dto);
+            }
+            catch { }
+        }
+
+        // Završi intervenciju
+        var finishDto = new InterventionFinishDto
         {
             Id = Intervention.Id,
             StartedAt = startDateTime,
@@ -245,7 +293,7 @@
         };
 
         var response = await Http.PutAsJsonAsync(
-            $"api/interventions/{Intervention.Id}/finish", dto);
+            $"api/interventions/{Intervention.Id}/finish", finishDto);
 
         if (response.IsSuccessStatusCode)
         {

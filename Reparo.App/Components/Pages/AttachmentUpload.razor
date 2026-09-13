@@ -106,7 +106,6 @@
                             Choose File
                         </label>
                     </MudButton>
-
                     @if (selectedFile is not null)
                     {
                         <MudText Typo="Typo.body2">
@@ -125,6 +124,13 @@
                                    OnClick="@(() => selectedFile = null)">
                             Clear
                         </MudButton>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2"
+                                 Style="color: var(--mud-palette-text-secondary);">
+                            No file selected
+                        </MudText>
                     }
                 </MudStack>
             </MudItem>

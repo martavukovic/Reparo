@@ -1,0 +1,183 @@
+﻿@page "/lookups"
+@inject HttpClient Http
+@inject CurrentUserService CurrentUser
+
+<PageTitle>Lookup Data - Reparo</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Lookup Data</MudText>
+
+@if (!CurrentUser.HasRole("Admin"))
+{
+    <MudAlert Severity="Severity.Warning">Access denied.</MudAlert>
+}
+else if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            @RenderLookupTable("Fault Types", faultTypes, "fault-types")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            @RenderLookupTable("Fault Priorities", priorities, "fault-priorities")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            @RenderLookupTable("Fault Statuses", statuses, "fault-statuses")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            @RenderLookupTable("Intervention Statuses", interventionStatuses, "intervention-statuses")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            @RenderLookupTable("Material Units", materialUnits, "material-units")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            @RenderLookupTable("Location Types", locationTypes, "location-types")
+        </MudItem>
+    </MudGrid>
+}
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <MudAlert Severity="@messageSeverity" Class="mt-4"
+              ShowCloseIcon="true"
+              CloseIconClicked="@(() => message = null)">
+        @message
+    </MudAlert>
+}
+
+@code {
+    private List<LookupDto> faultTypes = new();
+    private List<LookupDto> priorities = new();
+    private List<LookupDto> statuses = new();
+    private List<LookupDto> interventionStatuses = new();
+    private List<LookupDto> materialUnits = new();
+    private List<LookupDto> locationTypes = new();
+    private bool isLoading = true;
+    private string? message;
+    private Severity messageSeverity = Severity.Success;
+    private int? editingId;
+    private string? editingEndpoint;
+    private string editingName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            var t1 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/fault-types");
+            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/fault-priorities");
+            var t3 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/fault-statuses");
+            var t4 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/intervention-statuses");
+            var t5 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/material-units");
+            var t6 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/location-types");
+
+            await Task.WhenAll(t1, t2, t3, t4, t5, t6);
+
+            faultTypes = t1.Result ?? new();
+            priorities = t2.Result ?? new();
+            statuses = t3.Result ?? new();
+            interventionStatuses = t4.Result ?? new();
+            materialUnits = t5.Result ?? new();
+            locationTypes = t6.Result ?? new();
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+
+    private RenderFragment RenderLookupTable(
+        string title,
+        List<LookupDto> items,
+        string endpoint) => __builder =>
+    {
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.subtitle1"
+                     Style="font-weight: 600;"
+                     GutterBottom="true">
+                @title
+            </MudText>
+
+            @foreach (var item in items)
+            {
+                <MudStack Row="true"
+                          AlignItems="AlignItems.Center"
+                          Class="mb-2">
+                    @if (editingId == item.Id && editingEndpoint == endpoint)
+                    {
+                        <MudTextField @bind-Value="editingName"
+                                      Variant="Variant.Outlined"
+                                      Dense="true"
+                                      Style="flex: 1;" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Save"
+                                       Size="Size.Small"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => SaveLookup(endpoint))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                                       Size="Size.Small"
+                                       OnClick="CancelEdit" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Style="flex: 1;">
+                            @item.Name
+                        </MudText>
+                        <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => StartEdit(item, endpoint))" />
+                    }
+                </MudStack>
+            }
+        </MudPaper>
+    };
+
+    private void StartEdit(LookupDto item, string endpoint)
+    {
+        editingId = item.Id;
+        editingEndpoint = endpoint;
+        editingName = item.Name;
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+        editingEndpoint = null;
+        editingName = string.Empty;
+    }
+
+    private async Task SaveLookup(string endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(editingName) || editingId is null)
+            return;
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync(
+                $"api/lookups/{endpoint}/{editingId}",
+                new LookupDto { Id = editingId.Value, Name = editingName });
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "Saved successfully.";
+                messageSeverity = Severity.Success;
+                CancelEdit();
+                await LoadData();
+            }
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+    }
+}

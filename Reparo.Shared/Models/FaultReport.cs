@@ -30,4 +30,5 @@ public class FaultReport
     public DateTime? AiSummaryGeneratedAt { get; set; }
     public ICollection<WorkAssignment> Assignments { get; set; } = new List<WorkAssignment>();
     public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
+    public DateTime? ClosedAt { get; set; }
 }

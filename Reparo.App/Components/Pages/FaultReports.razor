@@ -22,180 +22,260 @@
 }
 else
 {
-    <MudPaper Class="pa-4 mb-4">
-        <MudGrid>
-            <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="filter.SearchText"
-                              Label="Search"
-                              Variant="Variant.Outlined"
-                              Adornment="Adornment.End"
-                              AdornmentIcon="@Icons.Material.Filled.Search" />
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudSelect T="int?"
-                           @bind-Value="filter.FaultStatusId"
-                           Label="Status"
-                           Variant="Variant.Outlined"
-                           Clearable="true">
-                    @foreach (var s in statuses)
-                    {
-                        <MudSelectItem T="int?" Value="@((int?)s.Id)">
-                            @s.Name
-                        </MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudSelect T="int?"
-                           @bind-Value="filter.FaultPriorityId"
-                           Label="Priority"
-                           Variant="Variant.Outlined"
-                           Clearable="true">
-                    @foreach (var p in priorities)
-                    {
-                        <MudSelectItem T="int?" Value="@((int?)p.Id)">
-                            @p.Name
-                        </MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudSelect T="int?"
-                           @bind-Value="filter.LocationId"
-                           Label="Location"
-                           Variant="Variant.Outlined"
-                           Clearable="true">
-                    @foreach (var l in locationLookup)
-                    {
-                        <MudSelectItem T="int?" Value="@((int?)l.Id)">
-                            @l.Name
-                        </MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudSelect T="int?"
-                           @bind-Value="filter.FaultTypeId"
-                           Label="Fault Type"
-                           Variant="Variant.Outlined"
-                           Clearable="true">
-                    @foreach (var t in faultTypes)
-                    {
-                        <MudSelectItem T="int?" Value="@((int?)t.Id)">
-                            @t.Name
-                        </MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="4" Class="d-flex align-center gap-2">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           OnClick="ApplyFilter">
-                    Apply
-                </MudButton>
-                <MudButton Variant="Variant.Outlined"
-                           OnClick="ResetFilter">
-                    Reset
-                </MudButton>
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
+<MudPaper Class="pa-4 mb-4">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField @bind-Value="filter.SearchText"
+                          Label="Search"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.Search" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="int?"
+                       @bind-Value="filter.FaultStatusId"
+                       Label="Status"
+                       Variant="Variant.Outlined"
+                       Clearable="true">
+                @foreach (var s in statuses)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="int?"
+                       @bind-Value="filter.FaultPriorityId"
+                       Label="Priority"
+                       Variant="Variant.Outlined"
+                       Clearable="true">
+                @foreach (var p in priorities)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)p.Id)">@p.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="int?"
+                       @bind-Value="filter.LocationId"
+                       Label="Location"
+                       Variant="Variant.Outlined"
+                       Clearable="true">
+                @foreach (var l in locationLookup)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)l.Id)">@l.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="int?"
+                       @bind-Value="filter.FaultTypeId"
+                       Label="Fault Type"
+                       Variant="Variant.Outlined"
+                       Clearable="true">
+                @foreach (var t in faultTypes)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)t.Id)">@t.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string"
+                       @bind-Value="sortBy"
+                       Label="Sort By"
+                       Variant="Variant.Outlined"
+                       Clearable="true">
+                <MudSelectItem T="string" Value="@("priority")">Priority</MudSelectItem>
+                <MudSelectItem T="string" Value="@("deadline")">Deadline</MudSelectItem>
+                <MudSelectItem T="string" Value="@("created")">Created</MudSelectItem>
+                <MudSelectItem T="string" Value="@("status")">Status</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudDatePicker @bind-Date="dateFrom"
+                           Label="Date From"
+                           Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudDatePicker @bind-Date="dateTo"
+                           Label="Date To"
+                           Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4"
+                 Class="d-flex align-center gap-2">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="ApplyFilter">
+                Apply
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       OnClick="ResetFilter">
+                Reset
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
 
-    @if (isLoading)
+@if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else if (reports.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No fault reports found.</MudAlert>
+}
+else
+{
+    @if (AttentionReports.Any())
     {
-        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-    }
-    else if (reports.Count == 0)
-    {
-        <MudAlert Severity="Severity.Info">No fault reports found.</MudAlert>
-    }
-    else
-    {
-        <MudTable Items="@SortedReports"
-                  Hover="true"
-                  Striped="false"
-                  Dense="true"
-                  T="FaultReportDto"
-                  RowStyleFunc="@GetRowStyle"
-                  OnRowClick="@((TableRowClickEventArgs<FaultReportDto> args) =>
-                                    Navigation.NavigateTo($"/fault-reports/{args.Item.Id}"))">
-            <HeaderContent>
-                <MudTh>Title</MudTh>
-                <MudTh>Location</MudTh>
-                <MudTh>Type</MudTh>
-                <MudTh>Priority</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Assigned To</MudTh>
-                <MudTh>Deadline</MudTh>
-                <MudTh>Created</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd>
-                    @context.Title
-                </MudTd>
-                <MudTd>
-                    @context.LocationName
-                </MudTd>
-                <MudTd>         
-                    @(context.FaultTypeName ?? "-")
-                </MudTd>
-                <MudTd>
-                    @if (context.FaultPriorityName is not null &&
-                                             context.FaultStatusName != "Closed")
-                    {
-                        <MudChip T="string"
-                                 Color="@GetPriorityColor(context.FaultPriorityName)"
-                                 Size="Size.Small">
-                            @context.FaultPriorityName
-                        </MudChip>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.body2">
-                            @(context.FaultPriorityName ?? "-")
-                        </MudText>
-                    }
-                </MudTd>
-                <MudTd>
-                    @if (context.FaultStatusName != "Closed")
-                    {
+        <MudPaper Class="pa-3 mb-4"
+                  Style="border: 1px solid var(--mud-palette-warning); border-radius: 8px;">
+            <MudTable Items="@AttentionReports"
+                      Hover="true"
+                      Dense="true"
+                      T="FaultReportDto"
+                      Elevation="0"
+                      OnRowClick="@((TableRowClickEventArgs<FaultReportDto> args) => {
+                          viewedReports.Add(args.Item.Id);
+                          Navigation.NavigateTo($"/fault-reports/{args.Item.Id}");
+                      })">
+                <HeaderContent>
+                    <MudTh>Title</MudTh>
+                    <MudTh>Location</MudTh>
+                    <MudTh>Priority</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Created</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            @if (context.HasActiveFailedIntervention)
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Error"
+                                         Size="Size.Small"
+                                         Icon="@Icons.Material.Filled.Warning">
+                                    Failed
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Info"
+                                         Size="Size.Small"
+                                         Icon="@Icons.Material.Filled.FiberNew">
+                                    New
+                                </MudChip>
+                            }
+                            <MudText Typo="Typo.body2">@context.Title</MudText>
+                        </MudStack>
+                    </MudTd>
+                    <MudTd>@context.LocationName</MudTd>
+                    <MudTd>
+                        @if (context.FaultPriorityName is not null)
+                        {
+                            <MudChip T="string"
+                                     Color="@GetPriorityColor(context.FaultPriorityName)"
+                                     Size="Size.Small">
+                                @context.FaultPriorityName
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2">-</MudText>
+                        }
+                    </MudTd>
+                    <MudTd>
                         <MudChip T="string"
                                  Color="@GetStatusColor(context.FaultStatusName)"
                                  Size="Size.Small">
                             @context.FaultStatusName
                         </MudChip>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-disabled);">
-                            @context.FaultStatusName
-                        </MudText>
-                    }
-                </MudTd>
-                <MudTd>
-                    @(context.ActiveTechnicianName ?? "-")
-                </MudTd>
-                <MudTd>
-                    @if (context.Deadline.HasValue &&
-                                             context.Deadline < DateTime.UtcNow &&
-                                             context.FaultStatusName != "Closed" &&
-                                             context.FaultStatusName != "Resolved")
-                    {
-                        <MudText Style="color: var(--mud-palette-error); font-weight: 600;">
-                            @context.Deadline.Value.ToString("dd.MM.yyyy") ⚠
-                        </MudText>
-                    }
-                    else
-                    {
-                        @(context.Deadline?.ToString("dd.MM.yyyy") ?? "-")
-                    }
-                </MudTd>
-                <MudTd>
-                    @context.CreatedAt.ToString("dd.MM.yyyy")
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+                    </MudTd>
+                    <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy HH:mm")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
     }
+
+    <MudTable Items="@SortedReports"
+              Hover="true"
+              Striped="false"
+              Dense="true"
+              T="FaultReportDto"
+              RowStyleFunc="@GetRowStyle"
+            OnRowClick="@((TableRowClickEventArgs<FaultReportDto> args) => {
+                viewedReports.Add(args.Item.Id);
+                Navigation.NavigateTo($"/fault-reports/{args.Item.Id}");
+            })">
+        <HeaderContent>
+            <MudTh>Title</MudTh>
+            <MudTh>Location</MudTh>
+            <MudTh>Type</MudTh>
+            <MudTh>Priority</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Assigned To</MudTh>
+            <MudTh>Deadline</MudTh>
+            <MudTh>Created</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Title</MudTd>
+            <MudTd>@context.LocationName</MudTd>
+            <MudTd>@(context.FaultTypeName ?? "-")</MudTd>
+            <MudTd>
+                @if (context.FaultPriorityName is not null &&
+                     context.FaultStatusName != "Closed")
+                {
+                    <MudChip T="string"
+                             Color="@GetPriorityColor(context.FaultPriorityName)"
+                             Size="Size.Small">
+                        @context.FaultPriorityName
+                    </MudChip>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2">
+                        @(context.FaultPriorityName ?? "-")
+                    </MudText>
+                }
+            </MudTd>
+            <MudTd>
+                @if (context.FaultStatusName != "Closed")
+                {
+                    <MudChip T="string"
+                             Color="@GetStatusColor(context.FaultStatusName)"
+                             Size="Size.Small">
+                        @context.FaultStatusName
+                    </MudChip>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2"
+                             Style="color: var(--mud-palette-text-disabled);">
+                        @context.FaultStatusName
+                    </MudText>
+                }
+            </MudTd>
+            <MudTd>@(context.ActiveTechnicianName ?? "-")</MudTd>
+            <MudTd>
+                @if (context.Deadline.HasValue &&
+                     context.Deadline < DateTime.UtcNow &&
+                     context.FaultStatusName != "Closed" &&
+                     context.FaultStatusName != "Resolved")
+                {
+                    <MudText Style="color: var(--mud-palette-error); font-weight: 600;">
+                        @context.Deadline.Value.ToString("dd.MM.yyyy") ⚠
+                    </MudText>
+                }
+                else
+                {
+                    @(context.Deadline?.ToString("dd.MM.yyyy") ?? "-")
+                }
+            </MudTd>
+            <MudTd>@context.CreatedAt.ToString("dd.MM.yyyy")</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
 }
 
 @code {
@@ -207,12 +287,44 @@ else
     private List<LookupDto> employees = new();
     private FaultReportFilterDto filter = new();
     private bool isLoading = true;
+    private HashSet<int> viewedReports = new();
+    private DateTime? dateFrom;
+    private string? sortBy;
+    private DateTime? dateTo;
 
-    private IEnumerable<FaultReportDto> SortedReports => reports
+private IEnumerable<FaultReportDto> AttentionReports =>
+    reports.Where(r =>
+        (r.FaultStatusName == "Submitted" ||
+         r.HasFailedIntervention) &&
+        !viewedReports.Contains(r.Id))
+    .OrderByDescending(r => r.CreatedAt);
+
+    private IEnumerable<FaultReportDto> RegularReports =>
+        reports.Where(r =>
+            r.FaultStatusName != "Submitted" &&
+            !r.HasFailedIntervention);
+
+private IEnumerable<FaultReportDto> SortedReports => sortBy switch
+{
+    "priority" => reports
+        .OrderBy(r => r.FaultStatusName == "Closed" ? 1 : 0)
+        .ThenBy(r => GetPriorityOrder(r.FaultPriorityName)),
+    "deadline" => reports
+        .OrderBy(r => r.FaultStatusName == "Closed" ? 1 : 0)
+        .ThenBy(r => r.Deadline.HasValue ? 0 : 1)
+        .ThenBy(r => r.Deadline ?? DateTime.MaxValue),
+    "created" => reports
+        .OrderBy(r => r.FaultStatusName == "Closed" ? 1 : 0)
+        .ThenByDescending(r => r.CreatedAt),
+    "status" => reports
+        .OrderBy(r => r.FaultStatusName == "Closed" ? 1 : 0)
+        .ThenBy(r => r.FaultStatusName),
+    _ => reports
         .OrderBy(r => r.FaultStatusName == "Closed" ? 1 : 0)
         .ThenBy(r => GetPriorityOrder(r.FaultPriorityName))
         .ThenBy(r => r.Deadline.HasValue ? 0 : 1)
-        .ThenBy(r => r.Deadline ?? DateTime.MaxValue);
+        .ThenBy(r => r.Deadline ?? DateTime.MaxValue)
+};
 
     private int GetPriorityOrder(string? priority) => priority switch
     {
@@ -277,6 +389,10 @@ else
     private string BuildQueryString()
     {
         var parts = new List<string>();
+        if (dateFrom.HasValue)
+            parts.Add($"DateFrom={dateFrom.Value:yyyy-MM-dd}");
+        if (dateTo.HasValue)
+            parts.Add($"DateTo={dateTo.Value:yyyy-MM-dd}");
         if (!string.IsNullOrWhiteSpace(filter.SearchText))
             parts.Add($"SearchText={Uri.EscapeDataString(filter.SearchText)}");
         if (filter.LocationId.HasValue)
@@ -295,6 +411,8 @@ else
     private async Task ResetFilter()
     {
         filter = new FaultReportFilterDto();
+        dateFrom = null;
+        dateTo = null;
         await LoadReports();
     }
 

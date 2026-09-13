@@ -21,6 +21,8 @@ public class FaultReportDto
     public bool HasFailedIntervention { get; set; }
     public string? ActiveTechnicianName { get; set; }
     public string? AiSummary { get; set; }
+    public bool HasActiveFailedIntervention { get; set; }
+    public List<InterventionMaterialDto> AllMaterials { get; set; } = new();
     public DateTime? AiSummaryGeneratedAt { get; set; }
 }
 

@@ -26,6 +26,14 @@ public class FaultReportsController : ControllerBase
         [FromQuery] FaultReportFilterDto filter)
     {
         var query = _context.FaultReports
+            .Include(f => f.Assignments)
+    .ThenInclude(a => a.Interventions)
+        .ThenInclude(i => i.Materials)
+            .ThenInclude(m => m.Material)
+.Include(f => f.Assignments)
+    .ThenInclude(a => a.Interventions)
+        .ThenInclude(i => i.Materials)
+            .ThenInclude(m => m.MaterialUnit)
             .Include(f => f.Location)
             .Include(f => f.ReportedByEmployee)
             .Include(f => f.FaultType)
@@ -39,6 +47,11 @@ public class FaultReportsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(filter.SearchText))
             query = query.Where(f => f.Title.Contains(filter.SearchText) ||
                                      f.Description.Contains(filter.SearchText));
+        if (filter.DateFrom.HasValue)
+            query = query.Where(f => f.CreatedAt >= filter.DateFrom.Value);
+
+        if (filter.DateTo.HasValue)
+            query = query.Where(f => f.CreatedAt <= filter.DateTo.Value.AddDays(1));
 
         if (filter.LocationId.HasValue)
             query = query.Where(f => f.LocationId == filter.LocationId);
@@ -90,22 +103,41 @@ public class FaultReportsController : ControllerBase
             Deadline = f.Deadline,
             CreatedAt = f.CreatedAt,
             IsDeleted = f.IsDeleted,
-            HasFailedIntervention = f.Assignments
-                .SelectMany(a => a.Interventions)
-                .Any(i => i.InterventionStatus.Name == "Failed"),
+            HasActiveFailedIntervention = f.Assignments
+            .Where(a => a.IsActive)
+            .SelectMany(a => a.Interventions)
+            .Any(i => i.InterventionStatus.Name == "Failed"),
             ActiveTechnicianName = f.Assignments
                 .Where(a => a.IsActive)
                 .Select(a => a.Technician.FirstName + " " + a.Technician.LastName)
-                .FirstOrDefault()
+                .FirstOrDefault(),
+            AllMaterials = f.Assignments
+                .SelectMany(a => a.Interventions)
+                .SelectMany(i => i.Materials)
+                .Select(m => new InterventionMaterialDto
+                {
+                    MaterialName = m.Material.Name,
+                    Quantity = m.Quantity,
+                    MaterialUnitName = m.MaterialUnit.Name
+                }).ToList(),
         }).ToListAsync();
 
         return Ok(reports);
     }
 
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<FaultReportDto>> GetById(int id)
     {
         var f = await _context.FaultReports
+            .Include(f => f.Assignments)
+    .ThenInclude(a => a.Interventions)
+        .ThenInclude(i => i.Materials)
+            .ThenInclude(m => m.Material)
+.Include(f => f.Assignments)
+    .ThenInclude(a => a.Interventions)
+        .ThenInclude(i => i.Materials)
+            .ThenInclude(m => m.MaterialUnit)
             .Include(f => f.Location)
             .Include(f => f.ReportedByEmployee)
             .Include(f => f.FaultType)
@@ -141,7 +173,16 @@ public class FaultReportsController : ControllerBase
                 .Select(a => a.Technician.FirstName + " " + a.Technician.LastName)
                 .FirstOrDefault(),
             AiSummary = f.AiSummary,
-            AiSummaryGeneratedAt = f.AiSummaryGeneratedAt
+            AiSummaryGeneratedAt = f.AiSummaryGeneratedAt,
+            AllMaterials = f.Assignments
+            .SelectMany(a => a.Interventions)
+            .SelectMany(i => i.Materials)
+            .Select(m => new InterventionMaterialDto
+            {
+                MaterialName = m.Material.Name,
+                Quantity = m.Quantity,
+                MaterialUnitName = m.MaterialUnit.Name
+            }).ToList(),
         });
     }
 
@@ -193,8 +234,14 @@ public class FaultReportsController : ControllerBase
         if (report is null || report.IsDeleted)
             return NotFound();
 
-        if (dto.FaultPriorityId == 4 && dto.Deadline is null)
-            return BadRequest("Critical report must have a deadline.");
+        if (dto.FaultPriorityId.HasValue)
+        {
+            var priority = await _context.FaultPriorities
+                .FirstOrDefaultAsync(p => p.Id == dto.FaultPriorityId);
+
+            if (priority?.Name == "Critical" && dto.Deadline is null)
+                return BadRequest("Critical priority requires a deadline.");
+        }
 
         report.FaultTypeId = dto.FaultTypeId;
         report.FaultPriorityId = dto.FaultPriorityId;
@@ -205,6 +252,7 @@ public class FaultReportsController : ControllerBase
 
         if (statusReviewed is not null)
             report.FaultStatusId = statusReviewed.Id;
+
         await _context.SaveChangesAsync();
         return NoContent();
     }
@@ -234,6 +282,8 @@ public class FaultReportsController : ControllerBase
 
         if (statusClosed is not null)
             report.FaultStatusId = statusClosed.Id;
+
+        report.ClosedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
         return NoContent();
@@ -300,16 +350,18 @@ public class FaultReportsController : ControllerBase
 
         var events = new List<TimelineEventDto>();
 
-        events.Add(new TimelineEventDto
+        if (report.FaultStatus.Name == "Closed" && report.ClosedAt.HasValue)
         {
-            Timestamp = report.CreatedAt,
-            EventType = "Created",
-            Description = $"Fault report submitted: {report.Title}",
-            Actor = report.ReportedByEmployee.FirstName + " " +
-                    report.ReportedByEmployee.LastName,
-            Color = "primary",
-            Icon = "BugReport"
-        });
+            events.Add(new TimelineEventDto
+            {
+                Timestamp = report.ClosedAt.Value,
+                EventType = "Closed",
+                Description = "Report closed by manager.",
+                Actor = "Manager",
+                Color = "success",
+                Icon = "CheckCircle"
+            });
+        }
 
         foreach (var att in report.Attachments.OrderBy(a => a.UploadedAt))
         {

@@ -4,78 +4,19 @@
 
 <PageTitle>Users - Reparo</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">User Management</MudText>
-
-<MudButton Variant="Variant.Filled"
-           Color="Color.Primary"
-           Class="mb-4"
-           OnClick="OpenCreateForm">
-    Add User
-</MudButton>
-
-@if (showCreateForm)
-{
-    <MudPaper Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-3">Add New User</MudText>
-
-        <MudGrid>
-            <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="createForm.Email"
-                              Label="Email"
-                              Variant="Variant.Outlined" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="createForm.Password"
-                              Label="Password"
-                              InputType="InputType.Password"
-                              Variant="Variant.Outlined" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudSelect T="int?"
-                           @bind-Value="createForm.EmployeeId"
-                           Label="Link to Employee"
-                           Variant="Variant.Outlined"
-                           Clearable="true">
-                    @foreach (var e in employees)
-                    {
-                        <MudSelectItem T="int?" Value="@((int?)e.Id)">
-                            @e.Name
-                        </MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12">
-                <MudText Typo="Typo.body2" Class="mb-2">Roles</MudText>
-                @foreach (var role in allRoles)
-                {
-                    <MudCheckBox T="bool"
-                                 Value="@createForm.Roles.Contains(role)"
-                                 ValueChanged="@(v => ToggleCreateRole(role, v))"
-                                 Label="@role" />
-                }
-            </MudItem>
-        </MudGrid>
-
-        <MudStack Row="true" Class="mt-3">
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       OnClick="CreateUser">
-                Create
-            </MudButton>
-            <MudButton Variant="Variant.Outlined"
-                       OnClick="@(() => showCreateForm = false)">
-                Cancel
-            </MudButton>
-        </MudStack>
-
-        @if (!string.IsNullOrWhiteSpace(createMessage))
-        {
-            <MudAlert Severity="@createMessageSeverity" Class="mt-3">
-                @createMessage
-            </MudAlert>
-        }
-    </MudPaper>
-}
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Users</MudText>
+    <MudSpacer />
+    @if (!showAddForm)
+    {
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.PersonAdd"
+                   OnClick="@(() => showAddForm = true)">
+            Add User
+        </MudButton>
+    }
+</MudStack>
 
 @if (!CurrentUser.HasRole("Admin"))
 {
@@ -83,175 +24,185 @@
 }
 else
 {
+    @if (showAddForm)
+    {
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">New User</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.FirstName"
+                                  Label="First Name"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.LastName"
+                                  Label="Last Name"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.Email"
+                                  Label="Email"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Email" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="form.Password"
+                                  Label="Password"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Password"
+                                  HelperText="Minimum 6 characters" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int"
+                               @bind-Value="form.LocationId"
+                               Label="Location"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem T="int" Value="0" Disabled="true">
+                            Select location...
+                        </MudSelectItem>
+                        @foreach (var l in locations)
+                        {
+                            <MudSelectItem T="int" Value="@l.Id">@l.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string"
+                               @bind-Value="form.Role"
+                               Label="Role"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem T="string" Value="@("Reporter")">Reporter</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Technician")">Technician</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Manager")">Manager</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Admin")">Admin</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <MudAlert Severity="@messageSeverity" Class="mt-3">@message</MudAlert>
+            }
+
+            <MudStack Row="true" Class="mt-4">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="CreateUser">
+                    Create User
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="@(() => { showAddForm = false; form = new(); message = null; })">
+                    Cancel
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    }
+
     @if (isLoading)
     {
         <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (users.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No users found.</MudAlert>
     }
     else
     {
         <MudTable Items="@users" Hover="true" Striped="true" Dense="true">
             <HeaderContent>
+                <MudTh>Name</MudTh>
                 <MudTh>Email</MudTh>
                 <MudTh>Roles</MudTh>
                 <MudTh>Employee</MudTh>
+                <MudTh>Status</MudTh>
                 <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
+                <MudTd>@context.DisplayName</MudTd>
                 <MudTd>@context.Email</MudTd>
-                <MudTd>@string.Join(", ", context.Roles)</MudTd>
                 <MudTd>
-                    @(context.EmployeeId.HasValue
-                        ? employees.FirstOrDefault(e => e.Id == context.EmployeeId)?.Name ?? $"ID: {context.EmployeeId}"
-                        : "Not linked")
+                    @foreach (var role in context.Roles)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary"
+                                 Class="mr-1">
+                            @role
+                        </MudChip>
+                    }
+                </MudTd>
+                <MudTd>@(context.EmployeeName ?? "-")</MudTd>
+                <MudTd>
+                    <MudChip T="string"
+                             Color="@(context.IsActive ? Color.Success : Color.Default)"
+                             Size="Size.Small">
+                        @(context.IsActive ? "Active" : "Inactive")
+                    </MudChip>
                 </MudTd>
                 <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                    <MudIconButton Icon="@Icons.Material.Filled.Lock"
                                    Size="Size.Small"
-                                   OnClick="@(() => OpenEditForm(context))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.PersonOff"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="@(() => DeactivateUser(context))" />
+                                   Title="Reset Password"
+                                   OnClick="@(() => OpenPasswordReset(context.Id))" />
+                    @if (context.IsActive)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.PersonOff"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       Title="Deactivate"
+                                       OnClick="@(() => DeactivateUser(context.Id))" />
+                    }
                 </MudTd>
             </RowTemplate>
         </MudTable>
     }
 
-    @if (showForm)
+    @* Password Reset Dialog *@
+    @if (showPasswordDialog)
     {
-        <MudPaper Class="pa-4 mt-4">
-            <MudText Typo="Typo.h6" Class="mb-3">Edit User</MudText>
-
-            <MudGrid>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.body2" Class="mb-1">Email</MudText>
-                    <MudText Typo="Typo.body1">@editingUser?.Email</MudText>
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudSelect T="int?"
-                               @bind-Value="selectedEmployeeId"
-                               Label="Link to Employee"
-                               Variant="Variant.Outlined"
-                               Clearable="true">
-                        @foreach (var e in employees)
-                        {
-                            <MudSelectItem T="int?" Value="@((int?)e.Id)">
-                                @e.Name
-                            </MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText Typo="Typo.body2" Class="mb-2">Roles</MudText>
-                    @foreach (var role in allRoles)
-                    {
-                        <MudCheckBox T="bool"
-                                     Value="@selectedRoles.Contains(role)"
-                                     ValueChanged="@(v => ToggleRole(role, v))"
-                                     Label="@role" />
-                    }
-                </MudItem>
-            </MudGrid>
-
-            <MudStack Row="true" Class="mt-3">
+        <MudDialog @bind-Visible="showPasswordDialog">
+            <TitleContent>
+                <MudText Typo="Typo.h6">Reset Password</MudText>
+            </TitleContent>
+            <DialogContent>
+                <MudTextField @bind-Value="newPassword"
+                              Label="New Password"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              HelperText="Minimum 6 characters" />
+            </DialogContent>
+            <DialogActions>
+                <MudButton OnClick="@(() => showPasswordDialog = false)">Cancel</MudButton>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
-                           OnClick="SaveUser">
-                    Save
+                           OnClick="ResetPassword">
+                    Reset
                 </MudButton>
-                <MudButton Variant="Variant.Outlined"
-                           OnClick="@(() => showForm = false)">
-                    Cancel
-                </MudButton>
-            </MudStack>
+            </DialogActions>
+        </MudDialog>
+    }
 
-            @if (!string.IsNullOrWhiteSpace(message))
-            {
-                <MudAlert Severity="@messageSeverity" Class="mt-3">
-                    @message
-                </MudAlert>
-            }
-        </MudPaper>
+    @if (!string.IsNullOrWhiteSpace(message) && !showAddForm)
+    {
+        <MudAlert Severity="@messageSeverity" Class="mt-4"
+                  ShowCloseIcon="true"
+                  CloseIconClicked="@(() => message = null)">
+            @message
+        </MudAlert>
     }
 }
 
 @code {
     private List<UserDto> users = new();
-    private List<LookupDto> employees = new();
-    private List<string> allRoles = new() { "Admin", "Manager", "Technician", "Reporter" };
-    private List<string> selectedRoles = new();
-    private UserDto? editingUser;
-    private int? selectedEmployeeId;
+    private List<LookupDto> locations = new();
     private bool isLoading = true;
-    private bool showForm = false;
+    private bool showAddForm = false;
+    private bool showPasswordDialog = false;
+    private string? resetPasswordUserId;
+    private string newPassword = string.Empty;
     private string? message;
     private Severity messageSeverity = Severity.Success;
-    private bool showCreateForm = false;
-    private CreateUserDto createForm = new();
-    private string? createMessage;
-    private Severity createMessageSeverity = Severity.Success;
 
-    private void OpenCreateForm()
-    {
-        createForm = new CreateUserDto();
-        createMessage = null;
-        showCreateForm = true;
-    }
-
-    private void ToggleCreateRole(string role, bool add)
-    {
-        if (add && !createForm.Roles.Contains(role))
-            createForm.Roles.Add(role);
-        else if (!add)
-            createForm.Roles.Remove(role);
-    }
-
-    private async Task CreateUser()
-    {
-        if (string.IsNullOrWhiteSpace(createForm.Email))
-        {
-            createMessage = "Email is required.";
-            createMessageSeverity = Severity.Error;
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(createForm.Password))
-        {
-            createMessage = "Password is required.";
-            createMessageSeverity = Severity.Error;
-            return;
-        }
-
-        if (!createForm.Roles.Any())
-        {
-            createMessage = "Please select at least one role.";
-            createMessageSeverity = Severity.Error;
-            return;
-        }
-
-        try
-        {
-            var response = await Http.PostAsJsonAsync("api/users", createForm);
-
-            if (response.IsSuccessStatusCode)
-            {
-                createMessage = "User created successfully.";
-                createMessageSeverity = Severity.Success;
-                showCreateForm = false;
-                await LoadData();
-            }
-            else
-            {
-                createMessage = await response.Content.ReadAsStringAsync();
-                createMessageSeverity = Severity.Error;
-            }
-        }
-        catch (Exception ex)
-        {
-            createMessage = $"Error: {ex.Message}";
-            createMessageSeverity = Severity.Error;
-        }
-    }
+    private CreateUserDto form = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -264,55 +215,48 @@ else
         try
         {
             var t1 = Http.GetFromJsonAsync<List<UserDto>>("api/users");
-            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/lookups/employees");
+            var t2 = Http.GetFromJsonAsync<List<LookupDto>>("api/locations/lookup");
 
             await Task.WhenAll(t1, t2);
 
             users = t1.Result ?? new();
-            employees = t2.Result ?? new();
+            locations = t2.Result ?? new();
         }
         catch { }
         finally { isLoading = false; }
     }
 
-    private void OpenEditForm(UserDto user)
+    private async Task CreateUser()
     {
-        editingUser = user;
-        selectedEmployeeId = user.EmployeeId;
-        selectedRoles = new List<string>(user.Roles);
-        message = null;
-        showForm = true;
-    }
-
-    private void ToggleRole(string role, bool add)
-    {
-        if (add && !selectedRoles.Contains(role))
-            selectedRoles.Add(role);
-        else if (!add)
-            selectedRoles.Remove(role);
-    }
-
-    private async Task SaveUser()
-    {
-        if (editingUser is null) return;
+        if (string.IsNullOrWhiteSpace(form.FirstName) ||
+            string.IsNullOrWhiteSpace(form.LastName) ||
+            string.IsNullOrWhiteSpace(form.Email) ||
+            string.IsNullOrWhiteSpace(form.Password) ||
+            form.LocationId == 0 ||
+            string.IsNullOrWhiteSpace(form.Role))
+        {
+            message = "All fields are required.";
+            messageSeverity = Severity.Error;
+            return;
+        }
 
         try
         {
-            if (selectedEmployeeId.HasValue)
+            var response = await Http.PostAsJsonAsync("api/users", form);
+
+            if (response.IsSuccessStatusCode)
             {
-                await Http.PutAsJsonAsync(
-                    $"api/users/{editingUser.Id}/employee",
-                    selectedEmployeeId.Value);
+                message = "User created successfully.";
+                messageSeverity = Severity.Success;
+                showAddForm = false;
+                form = new CreateUserDto();
+                await LoadData();
             }
-
-            await Http.PutAsJsonAsync(
-                $"api/users/{editingUser.Id}/roles",
-                selectedRoles);
-
-            message = "User updated successfully.";
-            messageSeverity = Severity.Success;
-            showForm = false;
-            await LoadData();
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
+                messageSeverity = Severity.Error;
+            }
         }
         catch (Exception ex)
         {
@@ -321,21 +265,61 @@ else
         }
     }
 
-    private async Task DeactivateUser(UserDto user)
+    private void OpenPasswordReset(string userId)
+    {
+        resetPasswordUserId = userId;
+        newPassword = string.Empty;
+        showPasswordDialog = true;
+    }
+
+    private async Task ResetPassword()
+    {
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+        {
+            message = "Password must be at least 6 characters.";
+            messageSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync(
+                $"api/users/{resetPasswordUserId}/password", newPassword);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "Password reset successfully.";
+                messageSeverity = Severity.Success;
+                showPasswordDialog = false;
+            }
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch { }
+    }
+
+    private async Task DeactivateUser(string userId)
     {
         try
         {
-            await Http.PutAsJsonAsync($"api/users/{user.Id}/deactivate", new { });
-            message = $"{user.Email} has been deactivated.";
-            messageSeverity = Severity.Success;
-            await LoadData();
+            var response = await Http.PutAsJsonAsync(
+                $"api/users/{userId}/deactivate", new { });
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "User deactivated.";
+                messageSeverity = Severity.Success;
+                await LoadData();
+            }
+            else
+            {
+                message = await response.Content.ReadAsStringAsync();
+                messageSeverity = Severity.Error;
+            }
         }
-        catch (Exception ex)
-        {
-            message = $"Error: {ex.Message}";
-            messageSeverity = Severity.Error;
-        }
+        catch { }
     }
-
-
 }

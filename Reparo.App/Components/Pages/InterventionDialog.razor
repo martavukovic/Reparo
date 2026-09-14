@@ -4,165 +4,236 @@
 @inject HttpClient Http
 @inject IDialogService DialogService
 
-<MudDialogContent Style="padding: 32px;">
-    <MudStack Spacing="4">
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Intervention</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div style="padding: 8px 4px;">
+            <MudStack Spacing="4">
 
-        @* Lista materijala *@
-        @if (materialForms.Any() || Intervention.Materials.Any())
-        {
-            <div>
-                <MudText Typo="Typo.subtitle1"
-                         Style="font-weight: 600;"
-                         GutterBottom="true">
-                    Materials
-                </MudText>
-
-                @* Već dodani materijali *@
-                @foreach (var mat in Intervention.Materials)
+                @* Materijali *@
+                @if (Dto?.Materials?.Any() == true || materialForms.Any())
                 {
-                    <MudStack Row="true" AlignItems="AlignItems.Center"
-                              Spacing="2" Class="mb-1">
-                        <MudIcon Icon="@Icons.Material.Filled.FiberManualRecord"
-                                 Size="Size.Small"
-                                 Color="Color.Primary"
-                                 Style="font-size: 8px;" />
-                        <MudText Typo="Typo.body2">
-                            @mat.MaterialName —
-                            <strong>@mat.Quantity @mat.MaterialUnitName</strong>
+                    <div>
+                        <MudText Typo="Typo.subtitle1"
+                                 Style="font-weight: 600;"
+                                 GutterBottom="true">
+                            Materials
                         </MudText>
-                    </MudStack>
+                        @foreach (var mat in Dto?.Materials ?? new())
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center"
+                                      Spacing="2" Class="mb-1">
+                                <MudIcon Icon="@Icons.Material.Filled.FiberManualRecord"
+                                         Size="Size.Small"
+                                         Color="Color.Primary"
+                                         Style="font-size: 8px;" />
+                                <MudText Typo="Typo.body2">
+                                    @mat.MaterialName —
+                                    <strong>@mat.Quantity @mat.MaterialUnitName</strong>
+                                </MudText>
+                            </MudStack>
+                        }
+                    </div>
                 }
 
-                @* Forme za novi materijal *@
-                @for (int i = 0; i < materialForms.Count; i++)
-                {
-                    var index = i;
-                    var form = materialForms[index];
-                    <MudPaper Outlined="true" Class="pa-3 mb-2">
-                        <MudGrid>
-                            <MudItem xs="12" sm="5">
-                                <MudTextField @bind-Value="form.Name"
-                                              Label="Material Name"
-                                              Variant="Variant.Outlined"
-                                              Placeholder="e.g. Cable 2.5mm" />
-                            </MudItem>
-                            <MudItem xs="6" sm="3">
-                                <MudNumericField @bind-Value="form.Quantity"
-                                                 Label="Quantity"
-                                                 Variant="Variant.Outlined"
-                                                 Min="0.01m" />
-                            </MudItem>
-                            <MudItem xs="6" sm="3">
-                                <MudSelect T="int"
-                                           @bind-Value="form.UnitId"
-                                           Label="Unit"
-                                           Variant="Variant.Outlined">
-                                    <MudSelectItem T="int" Value="0" Disabled="true">
-                                        Select...
-                                    </MudSelectItem>
-                                    @foreach (var u in MaterialUnits)
-                                    {
-                                        <MudSelectItem T="int" Value="@u.Id">
-                                            @u.Name
+                <MudDivider />
+
+                @* Dodaj materijal *@
+                <div>
+                    <MudText Typo="Typo.subtitle1"
+                             Style="font-weight: 600;"
+                             GutterBottom="true">
+                        Add Material
+                    </MudText>
+                    @for (int i = 0; i < materialForms.Count; i++)
+                    {
+                        var index = i;
+                        var form = materialForms[index];
+                        <MudPaper Outlined="true" Class="pa-3 mb-2">
+                            <MudGrid>
+                                <MudItem xs="12" sm="5">
+                                    <MudTextField @bind-Value="form.Name"
+                                                  Label="Material Name"
+                                                  Variant="Variant.Outlined"
+                                                  FullWidth="true"
+                                                  Dense="true"
+                                                  Placeholder="e.g. Cable" />
+                                </MudItem>
+                                <MudItem xs="6" sm="3">
+                                    <MudNumericField @bind-Value="form.Quantity"
+                                                     Label="Quantity"
+                                                     Variant="Variant.Outlined"
+                                                     FullWidth="true"
+                                                     Dense="true"
+                                                     Min="0.01m" />
+                                </MudItem>
+                                <MudItem xs="6" sm="3">
+                                    <MudSelect T="int"
+                                               @bind-Value="form.UnitId"
+                                               Label="Unit"
+                                               Variant="Variant.Outlined"
+                                               FullWidth="true"
+                                               Dense="true">
+                                        <MudSelectItem T="int" Value="0" Disabled="true">
+                                            Select...
                                         </MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-                            <MudItem xs="12" sm="1"
-                                     Class="d-flex align-center justify-end">
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                               Color="Color.Error"
-                                               Size="Size.Small"
-                                               OnClick="@(() => materialForms.RemoveAt(index))" />
-                            </MudItem>
-                        </MudGrid>
-                    </MudPaper>
+                                        @foreach (var u in Units)
+                                        {
+                                            <MudSelectItem T="int" Value="@u.Id">
+                                                @u.Name
+                                            </MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" sm="1"
+                                         Class="d-flex align-center justify-end">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => materialForms.RemoveAt(index))" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    }
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="AddMaterialForm">
+                        Add Material
+                    </MudButton>
+                </div>
+
+                <MudDivider />
+
+                @* Upload foto *@
+                <AttachmentUpload FaultReportId="@FaultReportId"
+                                  Attachments="@Attachments"
+                                  FixedPurpose="Photo After Work"
+                                  OnAttachmentChanged="OnAttachmentChanged" />
+
+                <MudDivider />
+
+                @if (!string.IsNullOrWhiteSpace(error))
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">@error</MudAlert>
                 }
-            </div>
-        }
 
-        <MudButton Variant="Variant.Outlined"
-                   Color="Color.Primary"
-                   Size="Size.Small"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="AddMaterialForm">
-            Add Material
-        </MudButton>
+                @* Finish *@
+                <div>
+                    <MudText Typo="Typo.subtitle1"
+                             Style="font-weight: 600;"
+                             GutterBottom="true">
+                        Finish Intervention
+                    </MudText>
+                    <MudGrid>
+                        @* xs=12/sm=6 umjesto xs=6: na mobitelu su date/time polja puna
+                           širina jedno ispod drugog, na tabletu/desktopu 2 u redu *@
+                        <MudItem xs="12" sm="6">
+                            <MudDatePicker @bind-Date="startDate"
+                                           Label="Start Date"
+                                           Variant="Variant.Outlined"
+                                           FullWidth="true"
+                                           Dense="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTimePicker @bind-Time="startTime"
+                                           Label="Start Time"
+                                           Variant="Variant.Outlined"
+                                           FullWidth="true"
+                                           Dense="true"
+                                           AmPm="false" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudDatePicker @bind-Date="endDate"
+                                           Label="End Date"
+                                           Variant="Variant.Outlined"
+                                           FullWidth="true"
+                                           Dense="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTimePicker @bind-Time="endTime"
+                                           Label="End Time"
+                                           Variant="Variant.Outlined"
+                                           FullWidth="true"
+                                           Dense="true"
+                                           AmPm="false" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="finishNote"
+                                          Label="Note"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true"
+                                          Dense="true"
+                                          Lines="2"
+                                          HelperText="Required" />
+                        </MudItem>
+                    </MudGrid>
+                </div>
 
-        <MudDivider />
-
-        @* Finish *@
-        <div>
-            <MudText Typo="Typo.subtitle1"
-                     Style="font-weight: 600;"
-                     GutterBottom="true">
-                Finish Intervention
-            </MudText>
-            <MudGrid>
-                <MudItem xs="6">
-                    <MudDatePicker @bind-Date="startDate"
-                                   Label="Start Date"
-                                   Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="6">
-                    <MudTimePicker @bind-Time="startTime"
-                                   Label="Start Time"
-                                   Variant="Variant.Outlined"
-                                   AmPm="false" />
-                </MudItem>
-                <MudItem xs="6">
-                    <MudDatePicker @bind-Date="endDate"
-                                   Label="End Date"
-                                   Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="6">
-                    <MudTimePicker @bind-Time="endTime"
-                                   Label="End Time"
-                                   Variant="Variant.Outlined"
-                                   AmPm="false" />
-                </MudItem>
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="finishNote"
-                                  Label="Note"
-                                  Variant="Variant.Outlined"
-                                  Lines="2"
-                                  HelperText="Required — describe what was done" />
-                </MudItem>
-            </MudGrid>
+            </MudStack>
         </div>
+    </DialogContent>
+    <DialogActions>
+        @* Desktop: gumbi jedan pored drugog, poravnati desno *@
+        <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+            <MudStack Row="false" Spacing="2" Class="px-4 py-2" Style="width: 100%;">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           StartIcon="@Icons.Material.Filled.CheckCircle"
+                           FullWidth="true"
+                           Class="py-3"
+                           Style="text-transform:none; font-size:1rem;"
+                           OnClick="@(() => Finish(true))">
+                    Complete Successfully
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Cancel"
+                           FullWidth="true"
+                           Class="py-3"
+                           Style="text-transform:none; font-size:1rem;"
+                           OnClick="ConfirmMarkAsFailed">
+                    Mark as Failed
+                </MudButton>
+            </MudStack>
+        </MudHidden>
 
-        @if (!string.IsNullOrWhiteSpace(error))
-        {
-            <MudAlert Severity="Severity.Error">@error</MudAlert>
-        }
-
-    </MudStack>
-</MudDialogContent>
-
-<MudDialogActions Style="padding: 16px 32px 24px 32px;">
-    <MudButton OnClick="Cancel" Variant="Variant.Text">Close</MudButton>
-    <MudSpacer />
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Error"
-               StartIcon="@Icons.Material.Filled.Cancel"
-               Class="mr-2"
-               OnClick="ConfirmMarkAsFailed">
-        Mark as Failed
-    </MudButton>
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Success"
-               StartIcon="@Icons.Material.Filled.CheckCircle"
-               OnClick="@(() => Finish(true))">
-        Complete Successfully
-    </MudButton>
-</MudDialogActions>
+        @* Mobitel: gumbi puna širina, jedan iznad drugog, čitljivi *@
+        <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+            <MudStack Row="false" Spacing="2" Class="px-4 py-2" Style="width: 100%;">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           StartIcon="@Icons.Material.Filled.CheckCircle"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           OnClick="@(() => Finish(true))">
+                    Complete Successfully
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Cancel"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           OnClick="ConfirmMarkAsFailed">
+                    Mark as Failed
+                </MudButton>
+            </MudStack>
+        </MudHidden>
+    </DialogActions>
+</MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
 
-    [Parameter] public InterventionDto Intervention { get; set; } = null!;
-    [Parameter] public List<LookupDto> MaterialUnits { get; set; } = new();
+    [Parameter] public InterventionDto Dto { get; set; } = null!;
+    [Parameter] public List<LookupDto> Units { get; set; } = new();
+    [Parameter] public int FaultReportId { get; set; }
+    [Parameter] public List<AttachmentDto> Attachments { get; set; } = new();
     [Parameter] public EventCallback OnMaterialAdded { get; set; }
+    [Parameter] public EventCallback OnAttachmentChanged { get; set; }
 
     private class MaterialForm
     {
@@ -195,11 +266,12 @@
 
         var options = new DialogOptions
         {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.ExtraSmall,
             FullWidth = true,
-            BackdropClick = true
+            MaxWidth = MaxWidth.Small,
+            CloseOnEscapeKey = true
         };
+
+        await DialogService.ShowAsync<InterventionDialog>("Intervention", parameters, options);
 
         var dialog = await DialogService.ShowAsync<ConfirmDialog>(
             "Confirm", parameters, options);
@@ -270,22 +342,21 @@
 
                 var dto = new InterventionMaterialCreateDto
                 {
-                    InterventionId = Intervention.Id,
+                    InterventionId = Dto.Id,
                     MaterialId = materialId,
                     Quantity = form.Quantity,
                     MaterialUnitId = form.UnitId
                 };
 
                 await Http.PostAsJsonAsync(
-                    $"api/interventions/{Intervention.Id}/materials", dto);
+                    $"api/interventions/{Dto.Id}/materials", dto);
             }
             catch { }
         }
 
-        // Završi intervenciju
         var finishDto = new InterventionFinishDto
         {
-            Id = Intervention.Id,
+            Id = Dto.Id,
             StartedAt = startDateTime,
             FinishedAt = endDateTime,
             Note = finishNote,
@@ -293,7 +364,7 @@
         };
 
         var response = await Http.PutAsJsonAsync(
-            $"api/interventions/{Intervention.Id}/finish", finishDto);
+            $"api/interventions/{Dto.Id}/finish", finishDto);
 
         if (response.IsSuccessStatusCode)
         {

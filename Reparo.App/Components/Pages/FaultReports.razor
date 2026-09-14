@@ -139,13 +139,16 @@ else
                           viewedReports.Add(args.Item.Id);
                           Navigation.NavigateTo($"/fault-reports/{args.Item.Id}");
                       })">
-                <HeaderContent>
-                    <MudTh>Title</MudTh>
-                    <MudTh>Location</MudTh>
-                    <MudTh>Priority</MudTh>
-                    <MudTh>Status</MudTh>
-                    <MudTh>Created</MudTh>
-                </HeaderContent>
+            <HeaderContent>
+                <MudTh>Title</MudTh>
+                <MudTh Class="hide-mobile">Location</MudTh>
+                <MudTh Class="hide-mobile">Type</MudTh>
+                <MudTh>Priority</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh Class="hide-mobile">Assigned To</MudTh>
+                <MudTh Class="hide-mobile">Deadline</MudTh>
+                <MudTh Class="hide-mobile">Created</MudTh>
+            </HeaderContent>
                 <RowTemplate>
                     <MudTd>
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
@@ -170,8 +173,8 @@ else
                             <MudText Typo="Typo.body2">@context.Title</MudText>
                         </MudStack>
                     </MudTd>
-                    <MudTd>@context.LocationName</MudTd>
-                    <MudTd>
+                    <MudTd Class="hide-mobile">@context.LocationName</MudTd>
+                    <MudTd Class="hide-mobile">
                         @if (context.FaultPriorityName is not null)
                         {
                             <MudChip T="string"
@@ -221,7 +224,7 @@ else
         <RowTemplate>
             <MudTd>@context.Title</MudTd>
             <MudTd>@context.LocationName</MudTd>
-            <MudTd>@(context.FaultTypeName ?? "-")</MudTd>
+            <MudTd Class="hide-mobile">@(context.FaultTypeName ?? "-")</MudTd>
             <MudTd>
                 @if (context.FaultPriorityName is not null &&
                      context.FaultStatusName != "Closed")

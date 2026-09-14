@@ -110,12 +110,11 @@ app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {
-    var userManager = scope.ServiceProvider
-        .GetRequiredService<UserManager<AppUser>>();
-    var roleManager = scope.ServiceProvider
-        .GetRequiredService<RoleManager<IdentityRole>>();
-
-    await SeedData.SeedUsersAsync(userManager, roleManager);
+    var services = scope.ServiceProvider;
+    var userManager = services.GetRequiredService<UserManager<AppUser>>();
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+    var context = services.GetRequiredService<AppDbContext>();
+    await SeedData.SeedUsersAsync(userManager, roleManager, context);
 }
 
 app.Run();

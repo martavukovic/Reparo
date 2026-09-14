@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Reparo.Api.Data;
 using Reparo.Api.Models;
 using Reparo.Api.Services;
 using Reparo.Shared.DTOs;
+using Microsoft.EntityFrameworkCore;
 
 namespace Reparo.Api.Controllers;
 
@@ -13,15 +15,18 @@ public class AuthController : ControllerBase
     private readonly UserManager<AppUser> _userManager;
     private readonly SignInManager<AppUser> _signInManager;
     private readonly JwtService _jwtService;
+    private readonly AppDbContext _context;
 
     public AuthController(
         UserManager<AppUser> userManager,
         SignInManager<AppUser> signInManager,
-        JwtService jwtService)
+        JwtService jwtService,
+        AppDbContext context)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _jwtService = jwtService;
+        _context = context;
     }
 
     [HttpPost("login")]
@@ -45,7 +50,12 @@ public class AuthController : ControllerBase
         {
             Id = user.Id,
             Email = user.Email!,
-            DisplayName = user.UserName ?? user.Email!,
+            DisplayName = user.EmployeeId.HasValue
+                ? await _context.Employees
+                    .Where(e => e.Id == user.EmployeeId)
+                    .Select(e => e.FirstName + " " + e.LastName)
+                    .FirstOrDefaultAsync() ?? user.Email!
+                : user.Email!,
             Roles = roles.ToList(),
             EmployeeId = user.EmployeeId,
             Token = token

@@ -6,7 +6,7 @@
 <MudNavMenu Class="pa-2">
     @if (!CurrentUser.IsLoggedIn)
     {
-        <MudNavLink Href="/login"
+        <MudNavLink Href="/"
                     Icon="@Icons.Material.Filled.Login"
                     Match="NavLinkMatch.All">
             Sign In
@@ -28,6 +28,11 @@
                      Style="color: var(--mud-palette-text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
                 Management
             </MudText>
+            
+            <MudNavLink Href="/fault-reports"
+                        Icon="@Icons.Material.Filled.BugReport">
+                Fault Reports
+            </MudNavLink>
 
             <MudNavLink Href="/locations"
                         Icon="@Icons.Material.Filled.LocationOn">
@@ -37,11 +42,6 @@
             <MudNavLink Href="/employees"
                         Icon="@Icons.Material.Filled.Badge">
                 Employees
-            </MudNavLink>
-
-            <MudNavLink Href="/fault-reports"
-                        Icon="@Icons.Material.Filled.BugReport">
-                Fault Reports
             </MudNavLink>
 
             <MudNavLink Href="/assignments"
@@ -139,7 +139,7 @@
     private void HandleLogout()
     {
         CurrentUser.Logout();
-        Navigation.NavigateTo("/login");
+        Navigation.NavigateTo("/");
     }
 
     public void Dispose()

@@ -1,8 +1,8 @@
 ﻿@page "/my-assignments"
 @inject HttpClient Http
-@inject NavigationManager Navigation
 @inject CurrentUserService CurrentUser
 @inject IDialogService DialogService
+@inject NavigationManager Navigation
 
 <PageTitle>My Assignments - Reparo</PageTitle>
 
@@ -25,53 +25,90 @@ else
         @foreach (var assignment in activeAssignments)
         {
             <MudPaper Class="pa-4 mb-4" Style="border-left: 4px solid #7c4dff;">
-                <MudItem xs="12" md="9">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-                        <MudText Typo="Typo.h6">
-                            @assignment.FaultReportTitle
-                        </MudText>
-                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
-                                       Size="Size.Small"
-                                       Title="View report details"
-                                       OnClick="@(() => Navigation.NavigateTo(
-                                                                          $"/fault-reports/{assignment.FaultReportId}"))" />
-                    </MudStack>
-                    <MudGrid>
-                        <MudItem xs="6" sm="3">
-                            <MudText Typo="Typo.caption">Location</MudText>
-                            <MudText Typo="Typo.body2">@assignment.LocationName</MudText>
-                        </MudItem>
-                        <MudItem xs="6" sm="3">
-                            <MudText Typo="Typo.caption">Fault Type</MudText>
-                            <MudText Typo="Typo.body2">
-                                @(string.IsNullOrEmpty(assignment.FaultTypeName)
-                                    ? "-" : assignment.FaultTypeName)
+                <MudGrid>
+                    <MudItem xs="12" md="9">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                            <MudText Typo="Typo.h6">
+                                @assignment.FaultReportTitle
                             </MudText>
-                        </MudItem>
-                        <MudItem xs="6" sm="3">
-                            <MudText Typo="Typo.caption">Priority</MudText>
-                            <MudChip T="string"
-                                     Color="@GetPriorityColor(assignment.FaultPriorityName)"
-                                     Size="Size.Small">
-                                @(string.IsNullOrEmpty(assignment.FaultPriorityName)
-                                    ? "-" : assignment.FaultPriorityName)
-                            </MudChip>
-                        </MudItem>
-                        <MudItem xs="6" sm="3">
-                            <MudText Typo="Typo.caption">Assigned</MudText>
-                            <MudText Typo="Typo.body2">
-                                @assignment.AssignedAt.ToString("dd.MM.yyyy")
-                            </MudText>
-                        </MudItem>
-                        @if (!string.IsNullOrWhiteSpace(assignment.Note))
-                        {
-                            <MudItem xs="12">
-                                <MudText Typo="Typo.caption">Note</MudText>
-                                <MudText Typo="Typo.body2">@assignment.Note</MudText>
+                            <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                           Size="Size.Small"
+                                           Title="View report"
+                                           OnClick="@(() => Navigation.NavigateTo(
+                                                                                                                      $"/fault-reports/{assignment.FaultReportId}"))" />
+                        </MudStack>
+                        <MudGrid>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption">Location</MudText>
+                                <MudText Typo="Typo.body2">@assignment.LocationName</MudText>
                             </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption">Fault Type</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @(string.IsNullOrEmpty(assignment.FaultTypeName)
+                                        ? "-" : assignment.FaultTypeName)
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption">Priority</MudText>
+                                <MudChip T="string"
+                                         Color="@GetPriorityColor(assignment.FaultPriorityName)"
+                                         Size="Size.Small">
+                                    @(string.IsNullOrEmpty(assignment.FaultPriorityName)
+                                        ? "-" : assignment.FaultPriorityName)
+                                </MudChip>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption">Assigned</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @assignment.AssignedAt.ToString("dd.MM.yyyy")
+                                </MudText>
+                            </MudItem>
+                            @if (!string.IsNullOrWhiteSpace(assignment.Note))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption">Note</MudText>
+                                    <MudText Typo="Typo.body2">@assignment.Note</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+
+                    </MudItem>
+
+                    <MudItem xs="12" md="3" Class="d-flex align-center justify-end">
+                        @if (GetPlannedIntervention(assignment) is null)
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.PlayArrow"
+                                       OnClick="@(() => StartIntervention(assignment.Id))">
+                                Start Intervention
+                            </MudButton>
                         }
-                    </MudGrid>
-                </MudItem>
+                        else
+                        {
+                            <MudStack Spacing="1" AlignItems="AlignItems.End">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Warning"
+                                           StartIcon="@Icons.Material.Filled.ArrowForward"
+                                           OnClick="@(() => OpenFinishDialog(
+                                                            GetPlannedIntervention(assignment)!,
+                                                            assignment.FaultReportId))">
+                                    Continue Intervention
+                                </MudButton>
+                                @if (GetFailedInterventions(assignment).Any())
+                                {
+                                    <MudChip T="string"
+                                             Color="Color.Error"
+                                             Size="Size.Small"
+                                             Icon="@Icons.Material.Filled.Warning">
+                                        @GetFailedInterventions(assignment).Count failed attempt(s)
+                                    </MudChip>
+                                }
+                            </MudStack>
+                        }
+                    </MudItem>
+                </MudGrid>
             </MudPaper>
         }
     }
@@ -228,7 +265,6 @@ else
             if (response.IsSuccessStatusCode)
             {
                 await LoadData();
-                // Pronađi novu intervenciju i odmah otvori popup
                 var assignment = assignments.FirstOrDefault(a => a.Id == assignmentId);
                 var planned = assignment?.Interventions
                     .FirstOrDefault(i => i.InterventionStatusName == "Planned");
@@ -254,12 +290,16 @@ else
         var title = assignments
             .FirstOrDefault(a => a.FaultReportId == faultReportId)
             ?.FaultReportTitle ?? "Intervention";
+        var atts = GetAttachments(faultReportId);
 
         var parameters = new DialogParameters
         {
-            ["Intervention"] = intervention,
-            ["MaterialUnits"] = materialUnits,
-            ["OnMaterialAdded"] = EventCallback.Factory.Create(this, LoadData)
+            ["Dto"] = intervention,
+            ["Units"] = materialUnits,
+            ["FaultReportId"] = faultReportId,
+            ["Attachments"] = GetAttachments(faultReportId),
+            ["OnMaterialAdded"] = EventCallback.Factory.Create(this, LoadData),
+            ["OnAttachmentChanged"] = EventCallback.Factory.Create(this, LoadData)
         };
 
         var options = new DialogOptions

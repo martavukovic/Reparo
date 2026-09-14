@@ -9,16 +9,24 @@
 <MudButton Variant="Variant.Text"
            StartIcon="@Icons.Material.Filled.ArrowBack"
            OnClick="@(() => Navigation.NavigateTo(
-                              CurrentUser.HasAnyRole("Admin", "Manager")
-                                  ? "/fault-reports"
-                                  : "/my-reports"))"
+                                             CurrentUser.HasAnyRole("Admin", "Manager")
+                                                 ? "/fault-reports"
+                                                 : "/my-reports"))"
            Class="mb-4">
     Back
 </MudButton>
 
-<MudText Typo="Typo.h4" Class="mb-4">
-    @(Id == 0 ? "New Fault Report" : "Edit Fault Report")
-</MudText>
+@* Naslov je manji na mobitelu (MudHidden umjesto media querya) *@
+<MudHidden Breakpoint="Breakpoint.SmAndDown">
+    <MudText Typo="Typo.h4" Class="mb-4">
+        @(Id == 0 ? "New Fault Report" : "Edit Fault Report")
+    </MudText>
+</MudHidden>
+<MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+    <MudText Typo="Typo.h5" Class="mb-4">
+        @(Id == 0 ? "New Fault Report" : "Edit Fault Report")
+    </MudText>
+</MudHidden>
 
 @if (!CurrentUser.HasAnyRole("Admin", "Manager", "Reporter"))
 {
@@ -32,7 +40,7 @@ else
 {
     <MudGrid>
         <MudItem xs="12" md="8">
-            <MudPaper Class="pa-4">
+            <MudPaper Class="pa-3 pa-sm-4">
 
                 @if (!string.IsNullOrWhiteSpace(message))
                 {
@@ -48,70 +56,15 @@ else
                         <MudTextField @bind-Value="form.Title"
                                       Label="Title"
                                       Variant="Variant.Outlined"
-                                      Immediate="true"
-                                      DebounceInterval="600"
-                                      OnDebounceIntervalElapsed="OnTitleDebounced"
-                                      HelperText="AI will suggest fault type and priority as you type" />
+                                      FullWidth="true"
+                                      HelperText="Brief description of the fault" />
                     </MudItem>
-
-                    @if (aiSuggestion is not null && !aiSuggestion.IsConfirmed)
-                    {
-                        <MudItem xs="12">
-                            <MudPaper Class="pa-3"
-                                      Style="border: 1px solid var(--mud-palette-primary); border-radius: 8px;">
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-                                    <MudIcon Icon="@Icons.Material.Filled.AutoAwesome"
-                                             Size="Size.Small"
-                                             Style="color: #7c4dff;" />
-                                    <MudText Typo="Typo.subtitle2">AI Suggestion</MudText>
-                                    <MudSpacer />
-                                    <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                                   Size="Size.Small"
-                                                   OnClick="@(() => aiSuggestion = null)" />
-                                </MudStack>
-                                <MudGrid>
-                                    <MudItem xs="12" sm="4">
-                                        <MudText Typo="Typo.caption">Suggested Type</MudText>
-                                        <MudText Typo="Typo.body2">
-                                            @aiSuggestion.SuggestedFaultType
-                                        </MudText>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="4">
-                                        <MudText Typo="Typo.caption">Suggested Priority</MudText>
-                                        <MudChip T="string" Size="Size.Small"
-                                                 Color="@GetPriorityColor(
-                                                                                                                                                  aiSuggestion.SuggestedPriority)">
-                                            @aiSuggestion.SuggestedPriority
-                                        </MudChip>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="4">
-                                        <MudText Typo="Typo.caption">Reasoning</MudText>
-                                        <MudText Typo="Typo.body2">
-                                            @aiSuggestion.Reasoning
-                                        </MudText>
-                                    </MudItem>
-                                </MudGrid>
-                                <MudStack Row="true" Class="mt-2">
-                                    <MudButton Variant="Variant.Filled"
-                                               Color="Color.Primary"
-                                               Size="Size.Small"
-                                               OnClick="AcceptAiSuggestion">
-                                        Accept
-                                    </MudButton>
-                                    <MudButton Variant="Variant.Text"
-                                               Size="Size.Small"
-                                               OnClick="@(() => aiSuggestion = null)">
-                                        Dismiss
-                                    </MudButton>
-                                </MudStack>
-                            </MudPaper>
-                        </MudItem>
-                    }
 
                     <MudItem xs="12">
                         <MudTextField @bind-Value="form.Description"
                                       Label="Description"
                                       Variant="Variant.Outlined"
+                                      FullWidth="true"
                                       Lines="4"
                                       HelperText="Provide as much detail as possible" />
                     </MudItem>
@@ -122,7 +75,8 @@ else
                             <MudSelect T="int"
                                        @bind-Value="form.LocationId"
                                        Label="Location"
-                                       Variant="Variant.Outlined">
+                                       Variant="Variant.Outlined"
+                                       FullWidth="true">
                                 <MudSelectItem T="int" Value="0" Disabled="true">
                                     Select location...
                                 </MudSelectItem>
@@ -136,7 +90,8 @@ else
                             <MudSelect T="int"
                                        @bind-Value="form.ReportedByEmployeeId"
                                        Label="Reported By"
-                                       Variant="Variant.Outlined">
+                                       Variant="Variant.Outlined"
+                                       FullWidth="true">
                                 <MudSelectItem T="int" Value="0" Disabled="true">
                                     Select reporter...
                                 </MudSelectItem>
@@ -164,75 +119,147 @@ else
                         <MudText Typo="Typo.subtitle2" Class="mb-2">
                             Photo Before Work (optional)
                         </MudText>
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                            <InputFile id="photoInput"
-                                       OnChange="HandleFileSelected"
-                                       accept="image/jpeg,image/png,image/webp"
-                                       style="display:none;" />
-                            <MudButton Variant="Variant.Outlined"
-                                       StartIcon="@Icons.Material.Filled.AddAPhoto"
-                                       Size="Size.Small">
-                                <label for="photoInput" style="cursor:pointer; margin:0;">
-                                    Choose Photo
-                                </label>
-                            </MudButton>
-                            @if (selectedFile is not null)
-                            {
-                                <MudText Typo="Typo.body2">
-                                    @selectedFile.Name
-                                    (@($"{selectedFile.Size / 1024:N0} KB"))
-                                </MudText>
-                                <MudButton Variant="Variant.Text"
-                                           Size="Size.Small"
-                                           Color="Color.Error"
-                                           OnClick="@(() => selectedFile = null)">
-                                    Remove
+
+                        @* Desktop: sve u jednom redu *@
+                        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <InputFile id="photoInputDesktop"
+                                           OnChange="HandleFileSelected"
+                                           accept="image/jpeg,image/png,image/webp"
+                                           style="display:none;" />
+                                <MudButton Variant="Variant.Outlined"
+                                           StartIcon="@Icons.Material.Filled.AddAPhoto"
+                                           Size="Size.Small">
+                                    <label for="photoInputDesktop" style="cursor:pointer; margin:0;">
+                                        Choose Photo
+                                    </label>
                                 </MudButton>
-                            }
-                            else
-                            {
-                                <MudText Typo="Typo.body2"
-                                         Style="color: var(--mud-palette-text-secondary);">
-                                    No file selected
-                                </MudText>
-                            }
-                        </MudStack>
+                                @if (selectedFile is not null)
+                                {
+                                    <MudText Typo="Typo.body2">
+                                        @selectedFile.Name
+                                        (@($"{selectedFile.Size / 1024:N0} KB"))
+                                    </MudText>
+                                    <MudButton Variant="Variant.Text"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => selectedFile = null)">
+                                        Remove
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2"
+                                             Style="color: var(--mud-palette-text-secondary);">
+                                        No file selected
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </MudHidden>
+
+                        @* Mobitel: puna širina, jedno ispod drugog *@
+                        <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+                            <MudStack Row="false" Spacing="2">
+                                <InputFile id="photoInputMobile"
+                                           OnChange="HandleFileSelected"
+                                           accept="image/jpeg,image/png,image/webp"
+                                           style="display:none;" />
+                                <MudButton Variant="Variant.Outlined"
+                                           StartIcon="@Icons.Material.Filled.AddAPhoto"
+                                           FullWidth="true">
+                                    <label for="photoInputMobile" style="cursor:pointer; margin:0;">
+                                        Choose Photo
+                                    </label>
+                                </MudButton>
+                                @if (selectedFile is not null)
+                                {
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <MudText Typo="Typo.body2">
+                                            @selectedFile.Name
+                                            (@($"{selectedFile.Size / 1024:N0} KB"))
+                                        </MudText>
+                                        <MudButton Variant="Variant.Text"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => selectedFile = null)">
+                                            Remove
+                                        </MudButton>
+                                    </MudStack>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2"
+                                             Style="color: var(--mud-palette-text-secondary);">
+                                        No file selected
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </MudHidden>
                     </MudItem>
                 </MudGrid>
 
-                <MudStack Row="true" Class="mt-4">
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Disabled="isSaving"
-                               OnClick="Save">
-                        @(isSaving ? "Saving..." : (Id == 0 ? "Submit Report" : "Save Changes"))
-                    </MudButton>
-                    <MudButton Variant="Variant.Outlined"
-                               OnClick="@(() => Navigation.NavigateTo(
-                                                                                          CurrentUser.HasAnyRole("Admin", "Manager")
-                                                                                              ? "/fault-reports"
-                                                                                              : "/my-reports"))">
-                        Cancel
-                    </MudButton>
-                </MudStack>
+                @* Desktop: gumbi jedan pored drugog *@
+                <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                    <MudStack Row="true" Class="mt-4" Spacing="3">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="isSaving"
+                                   OnClick="Save">
+                            @(isSaving ? "Saving..." : (Id == 0 ? "Submit Report" : "Save Changes"))
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   OnClick="@(() => Navigation.NavigateTo(
+                                                                                                                   CurrentUser.HasAnyRole("Admin", "Manager")
+                                                                                                                       ? "/fault-reports"
+                                                                                                                       : "/my-reports"))">
+                            Cancel
+                        </MudButton>
+                    </MudStack>
+                </MudHidden>
+
+                @* Mobitel: gumbi puna širina, jedan iznad drugog *@
+                <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+                    <MudStack Row="false" Class="mt-4" Spacing="2">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="isSaving"
+                                   FullWidth="true"
+                                   Class="py-3"
+                                   Style="text-transform:none; font-size:1rem;"
+                                   OnClick="Save">
+                            @(isSaving ? "Saving..." : (Id == 0 ? "Submit Report" : "Save Changes"))
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   FullWidth="true"
+                                   Class="py-3"
+                                   Style="text-transform:none; font-size:1rem;"
+                                   OnClick="@(() => Navigation.NavigateTo(
+                                                                                   CurrentUser.HasAnyRole("Admin", "Manager")
+                                                                                       ? "/fault-reports"
+                                                                                       : "/my-reports"))">
+                            Cancel
+                        </MudButton>
+                    </MudStack>
+                </MudHidden>
             </MudPaper>
         </MudItem>
 
-        <MudItem xs="12" md="4">
-            <MudPaper Class="pa-4 mb-4">
-                <MudText Typo="Typo.subtitle2" Class="mb-3">💡 Tips</MudText>
-                <MudText Typo="Typo.body2" Class="mb-2">
-                    • Be specific in the title — AI will suggest fault type and priority
-                </MudText>
-                <MudText Typo="Typo.body2" Class="mb-2">
-                    • Add a photo to help the technician understand the issue
-                </MudText>
-                <MudText Typo="Typo.body2">
-                    • Select the correct location so the right team is notified
-                </MudText>
-            </MudPaper>
-        </MudItem>
+        @* Tips sekcija - sakrivena na mobitelu (xs, sm), vidljiva od md nadalje *@
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4 mb-4">
+                    <MudText Typo="Typo.subtitle2" Class="mb-3">💡 Tips</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-2">
+                        • Be specific in the title to help technicians understand the issue
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mb-2">
+                        • Add a photo to help the technician understand the issue
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+        </MudHidden>
     </MudGrid>
+
 }
 
 @code {
@@ -243,7 +270,6 @@ else
     private List<LookupDto> employees = new();
     private List<LookupDto> faultTypes = new();
     private IBrowserFile? selectedFile;
-    private AiSuggestionResult? aiSuggestion;
     private System.Timers.Timer? _debounceTimer;
     private bool isLoading = true;
     private bool isSaving = false;
@@ -327,52 +353,6 @@ else
     private void HandleFileSelected(InputFileChangeEventArgs e)
     {
         selectedFile = e.File;
-    }
-
-    private async Task OnTitleDebounced(string value)
-    {
-        form.Title = value;
-
-        if (string.IsNullOrWhiteSpace(value) || value.Length < 3)
-        {
-            aiSuggestion = null;
-            return;
-        }
-
-        await GetAiSuggestion();
-    }
-
-    private async Task GetAiSuggestion()
-    {
-        if (string.IsNullOrWhiteSpace(form.Title) || form.Title.Length < 3)
-            return;
-
-        try
-        {
-            var response = await Http.PostAsJsonAsync("api/ai/suggest", form.Title);
-            if (response.IsSuccessStatusCode)
-            {
-                aiSuggestion = await response.Content
-                    .ReadFromJsonAsync<AiSuggestionResult>();
-                StateHasChanged();
-            }
-        }
-        catch { }
-    }
-
-    private void AcceptAiSuggestion()
-    {
-        if (aiSuggestion is null) return;
-
-        var matchedType = faultTypes.FirstOrDefault(t =>
-            t.Name.Equals(aiSuggestion.SuggestedFaultType,
-                StringComparison.OrdinalIgnoreCase));
-
-        if (matchedType is not null)
-            form.FaultTypeId = matchedType.Id;
-
-        aiSuggestion.IsConfirmed = true;
-        aiSuggestion = null;
     }
 
     private async Task Save()

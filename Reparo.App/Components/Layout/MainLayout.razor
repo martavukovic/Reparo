@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @using Reparo.App.Services
 @using Reparo.App.Theme
+@inject NavigationManager Navigation
 @inject ThemeService ThemeService
 @implements IDisposable
 
@@ -9,69 +10,73 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar Elevation="0"
-               Style="border-bottom: 1px solid var(--mud-palette-divider);">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu"
-                       Color="Color.Inherit"
-                       Edge="Edge.Start"
-                       OnClick="@ToggleDrawer" />
-
-        <MudText Typo="Typo.h6"
-                 Style="font-weight: 700; letter-spacing: -0.5px;"
-                 Class="ml-2">
-            Reparo
-        </MudText>
-
-        <MudSpacer />
-
-        @if (CurrentUser.IsLoggedIn)
-        {
-            <MudText Typo="Typo.body2"
-                     Class="mr-3"
-                     Style="color: var(--mud-palette-text-secondary);">
-                @CurrentUser.User!.Email
+@if (IsLoginPage)
+{
+    @Body
+}
+else
+{
+    <MudLayout>
+        <MudAppBar Elevation="0"
+                   Style="border-bottom: 1px solid var(--mud-palette-divider);">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                           Color="Color.Inherit"
+                           Edge="Edge.Start"
+                           OnClick="@ToggleDrawer" />
+            <MudText Typo="Typo.h6"
+                     Style="font-weight: 700; letter-spacing: -0.5px;"
+                     Class="ml-2">
+                Reparo
             </MudText>
-        }
+            <MudSpacer />
+            @if (CurrentUser.IsLoggedIn)
+            {
+                <MudText Typo="Typo.body2"
+                         Class="mr-3"
+                         Style="color: var(--mud-palette-text-secondary);">
+                    @CurrentUser.User!.DisplayName
+                </MudText>
+            }
+            <MudIconButton Icon="@(ThemeService.IsDarkMode
+                                                                     ? Icons.Material.Filled.LightMode
+                                                                 : Icons.Material.Filled.DarkMode)"
+                           Color="Color.Inherit"
+                           OnClick="ToggleTheme"
+                           Title="@(ThemeService.IsDarkMode ? "Light mode" : "Dark mode")" />
+        </MudAppBar>
 
-        <MudIconButton Icon="@(ThemeService.IsDarkMode
-                                                         ? Icons.Material.Filled.LightMode
-                                                     : Icons.Material.Filled.DarkMode)"
-                       Color="Color.Inherit"
-                       OnClick="ToggleTheme"
-                       Title="@(ThemeService.IsDarkMode ? "Light mode" : "Dark mode")" />
-    </MudAppBar>
+        <MudDrawer @bind-Open="@drawerOpen"
+                   Elevation="0"
+                   Variant="DrawerVariant.Mini"
+                   OpenMiniOnHover="true"
+                   MiniWidth="80px"
+                   Width="260px"
+                   Style="border-right: 1px solid var(--mud-palette-divider);">
+            <MudDrawerHeader Style="padding: 16px 12px;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudAvatar Color="Color.Primary"
+                               Size="Size.Small"
+                               Style="font-weight: 700;">
+                        R
+                    </MudAvatar>
+                    @if (drawerOpen)
+                    {
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">
+                            Reparo
+                        </MudText>
+                    }
+                </MudStack>
+            </MudDrawerHeader>
+            <NavMenu />
+        </MudDrawer>
 
-    <MudDrawer @bind-Open="@drawerOpen"
-               Elevation="0"
-               Variant="DrawerVariant.Mini"
-               OpenMiniOnHover="true"
-               Style="border-right: 1px solid var(--mud-palette-divider);">
-        <MudDrawerHeader Style="padding: 16px 12px;">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                <MudAvatar Color="Color.Primary"
-                           Size="Size.Small"
-                           Style="font-weight: 700;">
-                    R
-                </MudAvatar>
-                @if (drawerOpen)
-                {
-                    <MudText Typo="Typo.subtitle1"
-                             Style="font-weight: 700;">
-                        Reparo
-                    </MudText>
-                }
-            </MudStack>
-        </MudDrawerHeader>
-        <NavMenu />
-    </MudDrawer>
-
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-6">
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+        <MudMainContent>
+            <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-6">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+}
 
 @code {
     [Inject] CurrentUserService CurrentUser { get; set; } = null!;
@@ -79,15 +84,17 @@
     private readonly MudTheme _theme = ReparoTheme.Create();
     private bool drawerOpen = true;
 
+    private bool IsLoginPage =>
+        Navigation.Uri == Navigation.BaseUri ||
+        Navigation.Uri.TrimEnd('/') == Navigation.BaseUri.TrimEnd('/');
+
     protected override void OnInitialized()
     {
         ThemeService.ThemeChanged += HandleThemeChanged;
     }
 
     private void ToggleDrawer() => drawerOpen = !drawerOpen;
-
     private void ToggleTheme() => ThemeService.Toggle();
-
     private void HandleThemeChanged() => InvokeAsync(StateHasChanged);
 
     public void Dispose()

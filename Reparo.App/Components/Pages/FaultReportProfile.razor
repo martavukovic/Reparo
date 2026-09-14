@@ -79,6 +79,74 @@ else
                 </MudGrid>
             </MudPaper>
 
+            @* AI Suggestion za Review *@
+            @if (editingReview || report.FaultTypeName is null)
+            {
+                @if (isLoadingAiSuggestion)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+                }
+
+                @if (reviewAiSuggestion is not null && !reviewAiSuggestion.IsConfirmed)
+                {
+                    <MudPaper Class="pa-3 mb-3"
+                              Style="border: 1px solid var(--mud-palette-primary); border-radius: 8px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome"
+                                     Size="Size.Small"
+                                     Style="color: #7c4dff;" />
+                            <MudText Typo="Typo.subtitle2">AI Suggestion</MudText>
+                            <MudSpacer />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           Size="Size.Small"
+                                           OnClick="@(() => reviewAiSuggestion = null)" />
+                        </MudStack>
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption">Fault Type</MudText>
+                                <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                    @reviewAiSuggestion.SuggestedFaultType
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption">Priority</MudText>
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Color="@GetPriorityColor(reviewAiSuggestion.SuggestedPriority)">
+                                    @reviewAiSuggestion.SuggestedPriority
+                                </MudChip>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption">Reasoning</MudText>
+                                <MudText Typo="Typo.body2">@reviewAiSuggestion.Reasoning</MudText>
+                            </MudItem>
+                        </MudGrid>
+                        <MudStack Row="true" Class="mt-2">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="AcceptAiReviewSuggestion">
+                                Accept
+                            </MudButton>
+                            <MudButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       OnClick="@(() => reviewAiSuggestion = null)">
+                                Dismiss
+                            </MudButton>
+                        </MudStack>
+                    </MudPaper>
+                }
+
+                <MudButton Variant="Variant.Outlined"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.AutoAwesome"
+                           Class="mb-3"
+                           Disabled="isLoadingAiSuggestion"
+                           OnClick="GetAiReviewSuggestion">
+                    Get AI Suggestion
+                </MudButton>
+            }
+
             @if (report.AllMaterials.Any())
             {
                 <MudPaper Class="pa-4 mb-4">
@@ -212,7 +280,6 @@ else
 
                 @if (report.FaultStatusName != "Closed")
                 {
-                    @* Review sekcija *@
                     <MudPaper Class="pa-4 mb-3">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
                             <MudIcon Icon="@Icons.Material.Filled.RateReview"
@@ -237,7 +304,6 @@ else
 
                         @if (editingReview || report.FaultTypeName is null)
                         {
-                            @* Forma za review *@
                             <MudSelect T="int?"
                                        @bind-Value="reviewForm.FaultTypeId"
                                        Label="Fault Type"
@@ -345,7 +411,6 @@ else
                         }
                     </MudPaper>
 
-                    @* Assignment sekcija *@
                     <MudPaper Class="pa-4 mb-3">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
                             <MudIcon Icon="@Icons.Material.Filled.Engineering"
@@ -450,7 +515,6 @@ else
                         }
                     </MudPaper>
 
-                    @* Close Report *@
                     @if (report.FaultStatusName == "Resolved")
                     {
                         <MudPaper Class="pa-4 mb-3"
@@ -533,7 +597,6 @@ else
 
 @code {
     [Parameter] public int Id { get; set; }
-
     private FaultReportDto? report;
     private List<AttachmentDto> attachments = new();
     private List<LookupDto> faultTypes = new();
@@ -555,6 +618,52 @@ else
     private bool editingDetails = false;
     private string editTitle = "";
     private string editDescription = "";
+    private AiSuggestionResult? reviewAiSuggestion;
+    private bool isLoadingAiSuggestion = false;
+
+    private async Task GetAiReviewSuggestion()
+    {
+        if (report is null) return;
+
+        isLoadingAiSuggestion = true;
+        reviewAiSuggestion = null;
+
+        try
+        {
+            var input = $"{report.Title}. {report.Description}";
+            var response = await Http.PostAsJsonAsync("api/ai/suggest", input);
+
+            if (response.IsSuccessStatusCode)
+            {
+                reviewAiSuggestion = await response.Content
+                    .ReadFromJsonAsync<AiSuggestionResult>();
+            }
+        }
+        catch { }
+        finally { isLoadingAiSuggestion = false; }
+    }
+
+    private void AcceptAiReviewSuggestion()
+    {
+        if (reviewAiSuggestion is null) return;
+
+        var matchedType = faultTypes.FirstOrDefault(t =>
+            t.Name.Equals(reviewAiSuggestion.SuggestedFaultType,
+                StringComparison.OrdinalIgnoreCase));
+        if (matchedType is not null)
+            reviewForm.FaultTypeId = matchedType.Id;
+
+        var matchedPriority = priorities.FirstOrDefault(p =>
+            p.Name.Equals(reviewAiSuggestion.SuggestedPriority,
+                StringComparison.OrdinalIgnoreCase));
+        if (matchedPriority is not null)
+            reviewForm.FaultPriorityId = matchedPriority.Id;
+
+        reviewAiSuggestion.IsConfirmed = true;
+        reviewAiSuggestion = null;
+
+        editingReview = true;
+    }
 
     private List<AttachmentDto> BeforePhotos =>
         attachments.Where(a => a.Purpose == "Photo Before Work" &&
@@ -598,7 +707,6 @@ else
                 if (report.AiSummary is not null)
                     aiSummary = report.AiSummary;
 
-                // Učitaj tehničare po lokaciji prijave
                 try
                 {
                     var byLocation = await Http.GetFromJsonAsync<List<LookupDto>>(

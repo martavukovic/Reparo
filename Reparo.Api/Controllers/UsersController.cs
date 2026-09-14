@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Reparo.Api.Data;
 using Reparo.Api.Models;
 using Reparo.Shared.DTOs;
+using Reparo.Shared.Models;
 
 namespace Reparo.Api.Controllers;
 
@@ -23,9 +24,13 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<List<UserDto>>> GetAll()
     {
-        var users = await _userManager.Users.ToListAsync();
+        var users = await _userManager.Users
+            .Include(u => u.Employee)
+            .ToListAsync();
+
         var result = new List<UserDto>();
 
         foreach (var user in users)
@@ -34,27 +39,20 @@ public class UsersController : ControllerBase
             result.Add(new UserDto
             {
                 Id = user.Id,
-                Email = user.Email!,
-                UserName = user.UserName!,
+                Email = user.Email ?? "",
+                DisplayName = user.Employee is not null
+                    ? $"{user.Employee.FirstName} {user.Employee.LastName}"
+                    : user.Email ?? "",
+                EmployeeName = user.Employee is not null
+                    ? $"{user.Employee.FirstName} {user.Employee.LastName}"
+                    : null,
                 EmployeeId = user.EmployeeId,
-                Roles = roles.ToList()
+                Roles = roles.ToList(),
+                IsActive = user.LockoutEnd is null || user.LockoutEnd < DateTimeOffset.UtcNow
             });
         }
 
         return Ok(result);
-    }
-
-    [HttpPut("{id}/employee")]
-    public async Task<ActionResult> LinkEmployee(string id, [FromBody] int employeeId)
-    {
-        var user = await _userManager.FindByIdAsync(id);
-        if (user is null)
-            return NotFound();
-
-        user.EmployeeId = employeeId;
-        await _userManager.UpdateAsync(user);
-
-        return NoContent();
     }
 
     [HttpPut("{id}/roles")]
@@ -86,26 +84,61 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> Create([FromBody] CreateUserDto dto)
     {
-        var existingUser = await _userManager.FindByEmailAsync(dto.Email);
-        if (existingUser is not null)
+        if (await _userManager.FindByEmailAsync(dto.Email) is not null)
             return BadRequest("User with this email already exists.");
+
+        // Kreiraj Employee
+        var employee = new Employee
+        {
+            FirstName = dto.FirstName,
+            LastName = dto.LastName,
+            LocationId = dto.LocationId,
+            IsTechnician = dto.IsTechnician,
+            IsActive = true,
+            IsAvailable = true
+        };
+
+        _context.Employees.Add(employee);
+        await _context.SaveChangesAsync();
 
         var user = new AppUser
         {
             UserName = dto.Email,
             Email = dto.Email,
-            EmployeeId = dto.EmployeeId
+            EmployeeId = employee.Id
         };
 
         var result = await _userManager.CreateAsync(user, dto.Password);
+
+        if (!result.Succeeded)
+        {
+            _context.Employees.Remove(employee);
+            await _context.SaveChangesAsync();
+            return BadRequest(result.Errors.First().Description);
+        }
+
+        await _userManager.AddToRoleAsync(user, dto.Role);
+
+        return Ok();
+    }
+
+    [HttpPut("{id}/password")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> ResetPassword(string id, [FromBody] string newPassword)
+    {
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null)
+            return NotFound();
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+
         if (!result.Succeeded)
             return BadRequest(result.Errors.First().Description);
 
-        if (dto.Roles.Any())
-            await _userManager.AddToRolesAsync(user, dto.Roles);
-
-        return Ok();
+        return NoContent();
     }
 }
